@@ -8,9 +8,10 @@ import time
 
 import co2
 import dht22
+import light
 
 
-SERVER = "localhost"
+SERVER = "192.168.0.213"
 WAITING_PORT = 8765
 WAIT_INTERVAL = 5
 SEND_COUNT = 6
@@ -21,6 +22,7 @@ def read_sensors():
         "temp": None,
         "humid": None,
         "co2": None,
+        "light_percent": None,
     }
 
     try:
@@ -35,6 +37,11 @@ def read_sensors():
     except Exception as e:
         print(f"CO2 read failed: {e}")
 
+    try:
+        data["light_percent"] = light.get_light_percent()
+    except Exception as e:
+        print(f"Light sensor read failed: {e}")
+
     return data
 
 
@@ -46,7 +53,7 @@ def client_test(hostname_v1=SERVER, waiting_port_v1=WAITING_PORT):
         for _ in range(SEND_COUNT):
             data = read_sensors()
             print(
-                "temp: {temp}, humid: {humid}, co2: {co2}".format(
+                "temp: {temp}, humid: {humid}, co2: {co2}, light: {light_percent} %".format(
                     **data
                 )
             )
