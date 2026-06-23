@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>CSV Viewer{% if selected_file %} — {{ selected_file }}{% endif %}</title>
+  <style>
+    body { font-family: sans-serif; padding: 16px; }
+    nav { margin-bottom: 16px; }
+    nav a { margin-right: 8px; }
+    nav a.active { font-weight: bold; }
+    table { border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 4px 10px; text-align: left; }
+    th { background: #f0f0f0; }
+    p.meta { color: #666; font-size: 0.85em; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+  <h1>CSV Viewer</h1>
+
+  <nav>
+    {% for file in csv_files %}
+      <a href="/?file={{ file }}"
+         {% if file == selected_file %}class="active"{% endif %}>{{ file }}</a>
+    {% else %}
+      <span>data-*.csv が見つかりません</span>
+    {% endfor %}
+  </nav>
+
+  {% if error %}
+    <p style="color:red">{{ error }}</p>
+
+  {% elif rows %}
+    <p class="meta">{{ selected_file }} — {{ row_count }} rows</p>
+    <table>
+      <thead>
+        <tr>
+          {% for col in columns %}<th>{{ col }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            {% for col in columns %}<td>{{ row[col] }}</td>{% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  {% elif selected_file %}
+    <p>データがありません。</p>
+
+  {% endif %}
+
+</body>
+</html>
