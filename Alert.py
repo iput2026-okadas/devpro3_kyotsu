@@ -11,6 +11,7 @@ latest_data = {
     "light": 0
 }
 
+current_status = "normal"
 # --- 設定：Discord または Slack の Webhook URL ---
 # Discord の場合は「チャンネル編集 -> 連携サービス -> ウェブフックを作成」から取得
 # Slack の場合は Incoming Webhooks アプリを追加して取得
@@ -26,12 +27,15 @@ def send_alert(co2_value, level):
         message = f"⚠️ 【注意】 CO₂濃度が上昇しています! 現在: {co2_value} ppm (1000ppm以上)"
     elif level == "danger":
         message = f"🚨 【警告】 すぐに換気してください! 現在: {co2_value} ppm (1500ppm以上)"
+    elif level == "recover":
+        message = f"✅ 【回復】 CO₂濃度が正常範囲内(1000ppm未満)です。 現在: {co2_value} ppm"
     else:
         return
 
     payload = {"content": message} # Slackの場合は {"text": message}
     try:
         requests.post(WEBHOOK_URL, json=payload)
+        print(f"送信完了: {message}")
     except Exception as e:
         print(f"通知送信エラー: {e}")
 
@@ -53,9 +57,18 @@ def receive_data():
     # CO₂ 濃度によるアラート判定
     co2 = latest_data["co2"]
     if co2 >= 1500:
-        send_alert(co2, "danger")
+        if current_status != "danger":
+            send_alert(co2, "danger")
     elif co2 >= 1000:
-        send_alert(co2, "warning")
+        if current_status == "normal":
+            current_status = "warning"
+            send_alert(co2, "warning")
+        elif current_status == "danger":
+            current_status = "warning"
+    else:
+        if current_status != "normal":
+            current_status = "normal"
+            send_alert(co2, "recover")
         
     return jsonify({"status": "success", "received": latest_data}), 200
 
@@ -90,7 +103,8 @@ def index():
             <h3>CO₂ 濃度</h3>
             <p class="value">{{ data.co2 }} ppm</p>
             {% if data.co2 >= 1500 %}<p><strong>🚨 要換気！</strong></p>
-            {% elif data.co2 >= 1000 %}<p><strong>⚠️ 窓を開けましょう</strong></p>{% endif %}
+            {% elif data.co2 >= 1000 %}<p><strong>⚠️ 窓を開けましょう</strong></p>
+            {% else %}<p style="color: green;">🟢 快適な空気です</p>{% endif %}
         </div>
 
         <div class="card">
