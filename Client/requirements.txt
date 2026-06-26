@@ -1,2 +1,2 @@
-lgpio
-pyserial
+lgpio==0.2.2.0
+pyserial==3.5

@@ -27,12 +27,6 @@ cd Sever
 python -m pip install -r requirements.txt
 ```
 
-Flask アプリを使う場合は、環境に Flask と requests も必要です。
-
-```bash
-python -m pip install flask requests
-```
-
 ## TCP 受信サーバー
 
 `server.py` は TCP ソケットで JSON データを受信し、メモリ上に保持します。
