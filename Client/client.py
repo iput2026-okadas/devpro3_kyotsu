@@ -11,10 +11,9 @@ import dht22
 import light
 
 
-SERVER = "192.168.0.213"
+SERVER = "10.192.139.10"
 WAITING_PORT = 8765
 WAIT_INTERVAL = 5
-SEND_COUNT = 6
 
 
 def read_sensors():
@@ -23,13 +22,19 @@ def read_sensors():
         "humid": None,
         "co2": None,
         "light_percent": None,
+        "dht22": "failed",
     }
 
     try:
-        temp, humid = dht22.get_dht_data()
+        temp, humid, status, error = dht22.get_dht_data_with_status()
         data["temp"] = temp
         data["humid"] = humid
+        data["dht22"] = status if error is None else f"{status}_{error}"
+        if status == "stale":
+            print(f"DHT22 read failed; using recent value: {error}")
     except Exception as e:
+        error = getattr(e, "error_code", e.__class__.__name__)
+        data["dht22"] = f"failed_{error}"
         print(f"DHT22 read failed: {e}")
 
     try:
@@ -50,12 +55,11 @@ def client_test(hostname_v1=SERVER, waiting_port_v1=WAITING_PORT):
         socket_r_s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         socket_r_s.connect((hostname_v1, waiting_port_v1))
 
-        for _ in range(SEND_COUNT):
+        while True:
             data = read_sensors()
             print(
-                "temp: {temp}, humid: {humid}, co2: {co2}, light: {light_percent} %".format(
-                    **data
-                )
+                "temp: {temp}, humid: {humid}, co2: {co2}, light: {light_percent} %, "
+                "dht22: {dht22}".format(**data)
             )
             data_s = (json.dumps(data) + "\n").encode("utf-8")
             socket_r_s.sendall(data_s)
@@ -83,5 +87,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("End of this client.")
     finally:
+        if hasattr(dht22, "close"):
+            dht22.close()
         if hasattr(co2, "close"):
             co2.close()
