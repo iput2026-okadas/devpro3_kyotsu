@@ -6,6 +6,8 @@ import threading
 import datetime as dt
 import csv
 
+import alert
+
 SERVER = '127.0.0.1'
 WAITING_PORT = 8765
 BACKLOG = 5
@@ -40,7 +42,9 @@ def recv_data1024(socket1, client_addr):
             data_r = socket1.recv(1024)
             if not data_r:              # 正常切断（FIN）
                 break
-            add_data(json.loads(data_r.decode('utf-8')))
+            data_dict = json.loads(data_r.decode('utf-8'))
+            add_data(data_dict)
+            alert.process_sensor_data(data_dict)
     except ConnectionResetError:
         print(f"強制切断: {client_addr}")
     except Exception as e:

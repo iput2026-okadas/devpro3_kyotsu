@@ -12,7 +12,7 @@
 Sever/
   server.py            TCP JSON 受信サーバーと CSV 書き出し処理。
   app-new.py           Flask 製の CSV ビューア。
-  alert.py             CO2 アラート用 Flask エンドポイントと Webhook 通知処理。
+  alert.py             CO2 アラート用の Webhook 通知判定モジュール。
   detective.py         気温変化原因分類の決定木デモ。
   templates/           CSV ビューア用 HTML テンプレート。
   static/              CSV ビューア用 CSS と JavaScript。
@@ -30,6 +30,8 @@ python -m pip install -r requirements.txt
 ## TCP 受信サーバー
 
 `server.py` は TCP ソケットで JSON データを受信し、メモリ上に保持します。
+受信したデータは `alert.py` の `process_sensor_data()` にも渡され、CO2 濃度に応じた
+Webhook 通知判定に使われます。
 `Ctrl+C` で終了したタイミングで、受信済みデータを `data-YYYYMMDDHHMMSS.csv` として
 `Sever/` 直下に保存します。
 
@@ -57,23 +59,21 @@ python app-new.py
 
 ## Webhook アラート
 
-`alert.py` は Flask で `POST /api/data` を受け取り、CO2 濃度に応じて Discord または
-Slack の Webhook へ通知します。
+`alert.py` は HTTP エンドポイントではなく、`server.py` から呼び出される通知判定
+モジュールです。`server.py` が TCP で受信した JSON を `process_sensor_data()` へ渡し、
+CO2 濃度に応じて Discord または Slack の Webhook へ通知します。
 
-起動例:
+Webhook URL は `WEBHOOK_URL` 環境変数で指定します。実際の URL はコミットしないでください。
 
 ```bash
-python alert.py
+WEBHOOK_URL="<discord-or-slack-webhook-url>" python server.py -h 0.0.0.0 -p 8765
 ```
 
-受け取る JSON の例:
+通知判定で扱う JSON は `Client/client.py` が送信する形式と同じです。
 
 ```json
-{"temperature": 24.8, "humidity": 60.2, "co2": 1235, "light": 48.5}
+{"temp": 24.8, "humid": 60.2, "co2": 1235, "light_percent": 48.5}
 ```
-
-実際の Discord や Slack の Webhook URL はコミットしないでください。公開用の
-リポジトリでは、プレースホルダーを維持するか、環境変数から読み込む形にします。
 
 ## 気温変化原因分類デモ
 
