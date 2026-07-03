@@ -5,11 +5,15 @@ import socket
 import threading
 import datetime as dt
 import csv
+from pathlib import Path
+
+import alert
 
 SERVER = '127.0.0.1'
 WAITING_PORT = 8765
 BACKLOG = 5
 LOOP_INTERVAL = 5
+DATA_DIR = Path(__file__).resolve().parent / "data"
 
 # CSV関係
 column = ["id", "timestamp", "temp", "humid"]
@@ -26,12 +30,13 @@ def add_data(data_dict):
 
 def save_data():
     now = dt.datetime.now().strftime("%Y%m%d%H%M%S")
-    with open(f"data-{now}.csv", "w", newline="", encoding="utf-8") as f:
+    output_path = DATA_DIR / f"data-{now}.csv"
+    with output_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(column)
         writer.writerows(data)
-    
-    print(f"\n\nSave csv: data-{now}.csv")
+
+    print(f"\n\nSave csv: {output_path}")
 
 def recv_data1024(socket1, client_addr):
     print(f"接続: {client_addr}")
@@ -40,7 +45,9 @@ def recv_data1024(socket1, client_addr):
             data_r = socket1.recv(1024)
             if not data_r:              # 正常切断（FIN）
                 break
-            add_data(json.loads(data_r.decode('utf-8')))
+            data_dict = json.loads(data_r.decode('utf-8'))
+            add_data(data_dict)
+            alert.process_sensor_data(data_dict)
     except ConnectionResetError:
         print(f"強制切断: {client_addr}")
     except Exception as e:
