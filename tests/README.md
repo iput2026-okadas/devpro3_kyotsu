@@ -33,6 +33,7 @@ python -m unittest discover -s tests/unit -p "test_*.py"
 
 `alert.py` のテストでは Slack Webhook 通信をモックするため、`Server/.env` や実際の
 `SLACK_WEBHOOK_URL` は不要です。Unit testへ実際のWebhook URLを記載しないでください。
+Unit Test のシナリオは `docs/test-unit-scenario.md` を参照してください。
 
 テスト対象の例:
 
@@ -60,7 +61,7 @@ python -m pytest tests/e2e
 E2E テストは Flask アプリを空いているローカルポートで自動起動し、Playwright の
 Chromium からページへアクセスします。テストデータは本番用やサンプル用の CSV を
 直接上書きせず、`tests/fixtures/csv_viewer/` のデータを一時ディレクトリへコピーして
-使います。テストシナリオは `docs/test-scenario.md` を参照してください。
+使います。E2E テストのシナリオは `docs/test-e2e-scenario.md` を参照してください。
 
 ### ブラウザ画面を見ながら実行する
 
