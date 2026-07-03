@@ -4,20 +4,19 @@
 Python の単体テストは `unittest`、ブラウザ操作を伴う E2E テストは Playwright を
 使って実装します。
 
-CSV ビューアの E2E テストを `tests/e2e/` に配置しています。
+`alert.py`、`server.py`、`app.py` の Unit Test と、CSV ビューアの E2E テストを
+配置しています。
 
 ## ディレクトリ構成
 
 ```text
 tests/
   README.md              テスト方針と実行方法。
-  requirements.txt       E2E テスト用の依存関係。
+  requirements.txt       Unit Test と E2E テスト用の依存関係。
   unit/                  Python の unittest による単体テスト。
   e2e/                   Playwright によるブラウザ E2E テスト。
-  fixtures/              テスト用の JSON、CSV、HTML などの固定データ。
+  fixtures/              テスト用の固定データ（現在は CSV）。
 ```
-
-まだ実テストを追加していない場合でも、上記の構成に沿ってファイルを増やします。
 
 ## 単体テスト
 
@@ -31,8 +30,11 @@ python -m pip install -r tests/requirements.txt
 python -m unittest discover -s tests/unit -p "test_*.py"
 ```
 
+現在は `alert.py` の通知と状態遷移、`server.py` の行追加・CSV保存・TCP受信、
+`app.py` のCSV選択・平均値計算・異常系を検証しています。
+
 `alert.py` のテストでは Slack Webhook 通信をモックするため、`Server/.env` や実際の
-`SLACK_WEBHOOK_URL` は不要です。Unit testへ実際のWebhook URLを記載しないでください。
+`SLACK_WEBHOOK_URL` は不要です。Unit Testへ実際のWebhook URLを記載しないでください。
 Unit Test のシナリオは `docs/test-unit-scenario.md` を参照してください。
 
 テスト対象の例:

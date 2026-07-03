@@ -2,7 +2,7 @@
 
 `Server/` には、Raspberry Pi から送られてくるセンサーデータを受信・保存・表示する
 ためのプログラムを配置しています。CO2 濃度に応じた Webhook 通知、室内環境の
-ルールベース判定、決定木による気温変化原因分類のサンプルも含まれています。
+ルールベース判定とチャットボットのサンプルも含まれています。
 
 ## ファイル構成
 
@@ -11,7 +11,6 @@ Server/
   server.py               TCP JSON 受信サーバーと CSV 書き出し処理。
   app.py                  Flask 製の CSV ビューア。
   alert.py                CO2 アラート用の Webhook 通知判定モジュール。
-  detective.py            気温変化原因分類の決定木デモ。
   analyze_environment.py  室内環境の詳細なルールベース判定処理。
   environment_advisor.py  チャットボット用の簡易環境判定処理。
   chatbot.py              環境に関する質問へ応答するクラス。
@@ -20,7 +19,7 @@ Server/
   templates/              CSV ビューア用 HTML テンプレート。
   static/                 CSV ビューア用 CSS と JavaScript。
   data/                   CSV の保存先と既存のサンプルデータ。
-  requirements.txt        Flask、Webhook、データ分析用の依存関係。
+  requirements.txt        サーバー側プログラムの Python 依存関係。
 ```
 
 ## セットアップ
@@ -45,7 +44,8 @@ python server.py -h 0.0.0.0 -p 8765
 `Ctrl+C` で終了すると、受信済みデータを
 `data/data-YYYYMMDDHHMMSS.csv` として保存します。現在 CSV に保存する列は `id`,
 `timestamp`, `temp`, `humid` です。クライアントから送信される `co2` と
-`light_percent` は通知判定には使われますが、CSV 保存対象には含まれていません。
+`light_percent` は CSV 保存対象には含まれていません。通知判定に使われるのは
+`co2` のみです。
 
 現在の受信処理は、1回の `recv(1024)` で1つの完全な JSON を受信する前提です。
 TCP 上でJSONが分割または結合された場合のバッファリング処理は未実装です。
@@ -61,7 +61,7 @@ python app.py
 ```
 
 ブラウザで `http://localhost:5001/` を開きます。ファイルの切り替え、列ごとの並べ替え、
-CSVまたはJSON形式でのエクスポートができます。
+平均温度・平均湿度の表示、CSVまたはJSON形式でのエクスポートができます。
 
 ## Webhook アラート
 
@@ -113,14 +113,3 @@ python chatbot-main.py
 
 `analyze_environment.py` には、低温・低湿度・明るすぎる場合や複合条件も扱う、より
 詳細な独立した判定処理があります。現在、チャットボットからは呼び出していません。
-
-## 気温変化原因分類デモ
-
-`detective.py` は `numpy`, `pandas`, `scikit-learn` を使い、生成したサンプルデータから
-気温変化の原因を決定木で分類する独立したデモです。
-
-実行例:
-
-```bash
-python detective.py
-```

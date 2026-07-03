@@ -13,7 +13,7 @@ Client/
   co2.py               MH-Z19 系 CO2 センサーを UART で読み取る。
   light.py             光量センサー読み取り用の薄いラッパー。
   light_mcp3008.py     MCP3008 SPI ADC 経由で光量を読み取る。
-  requirements.txt     Raspberry Pi ハードウェア用の依存関係。
+  requirements.txt     `lgpio` と `pyserial` の依存関係。
 ```
 
 ## セットアップ
@@ -26,7 +26,9 @@ python -m pip install -r requirements.txt
 ```
 
 CO2 センサーは `/dev/serial0`、光量センサーは SPI 接続の MCP3008 を使います。
-環境によっては、実行時に `sudo` が必要です。
+MCP3008 の読み取りには `spidev` も必要ですが、現在は `requirements.txt` に含まれて
+いないため、Raspberry Pi 側の環境へ別途インストールしてください。環境によっては、
+実行時に `sudo` が必要です。
 
 ## 実行方法
 
