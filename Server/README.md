@@ -16,6 +16,7 @@ Server/
   environment_advisor.py  チャットボット用の簡易環境判定処理。
   chatbot.py              環境に関する質問へ応答するクラス。
   chatbot-main.py         固定データを使った環境判定の実行例。
+  .env.example            Slack Webhook 設定ファイルのひな形。
   templates/              CSV ビューア用 HTML テンプレート。
   static/                 CSV ビューア用 CSS と JavaScript。
   data/                   CSV の保存先と既存のサンプルデータ。
@@ -68,15 +69,30 @@ CSVまたはJSON形式でのエクスポートができます。
 モジュールです。CO2 濃度が 1000 ppm 以上になると注意、1500 ppm 以上になると警告、
 1000 ppm 未満へ戻ると回復を通知します。同じ状態が続く間は通知を繰り返しません。
 
-Webhook URL は `WEBHOOK_URL` 環境変数で指定します。実際の URL はコミットしないで
-ください。
+`.env.example` を `.env` へコピーし、Slack Incoming Webhook URL を設定します。
 
 ```bash
-WEBHOOK_URL="<discord-webhook-url>" python server.py -h 0.0.0.0 -p 8765
+cp .env.example .env
+chmod 600 .env
 ```
 
-現在のペイロードは Discord 用の `{"content": "..."}` です。Slack Webhook を使う
-場合は、`alert.py` のペイロードを `{"text": "..."}` に変更する必要があります。
+`.env` の内容:
+
+```dotenv
+SLACK_WEBHOOK_URL="<slack-incoming-webhook-url>"
+```
+
+`.env` は `.gitignore` の対象ですが、暗号化はされないため、実際の URL を
+`.env.example` やソースコードへ書き込まず、ファイルの閲覧権限も制限してください。
+`alert.py` は `python-dotenv` で `Server/.env` を読み込み、Slack 用の
+`{"text": "..."}` を送信します。実行環境に `SLACK_WEBHOOK_URL` が設定済みの場合は、
+`.env` より実行環境の値が優先されます。
+
+設定後は TCP サーバーを起動します。
+
+```bash
+python server.py -h 0.0.0.0 -p 8765
+```
 
 通知判定で扱う JSON は `Client/client.py` が送信する形式と同じです。
 
