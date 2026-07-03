@@ -37,9 +37,31 @@
     <button id="download">CSVをエクスポート</button>
     <button id="export-json">JSONをエクスポート</button>
   </div>
-
-  <div class="panel">
+<div class="panel">
     <div class="toolbar">
+      <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; font-family: 'Inter', sans-serif; width: 100%;">
+        
+        <div style="flex: 1; min-width: 150px; background-color: #eff6ff; border-left: 4px solid #2563eb; padding: 12px 15px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+          <div style="font-size: 0.85em; color: #1e40af; margin-bottom: 4px; font-weight: 600;">平均温度</div>
+          <div style="font-size: 1.4em; font-weight: bold; color: #1d4ed8;">{{ avg_temperature }} <span style="font-size: 0.7em;">℃</span></div>
+        </div>
+
+        <div style="flex: 1; min-width: 150px; background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 12px 15px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+          <div style="font-size: 0.85em; color: #065f46; margin-bottom: 4px; font-weight: 600;">平均湿度</div>
+          <div style="font-size: 1.4em; font-weight: bold; color: #047857;">{{ avg_humidity }} <span style="font-size: 0.7em;">%</span></div>
+        </div>
+
+        <div style="flex: 1; min-width: 150px; background-color: #fef3c7; border-left: 4px solid #d97706; padding: 12px 15px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+          <div style="font-size: 0.85em; color: #92400e; margin-bottom: 4px; font-weight: 600;">平均降水量</div>
+          <div style="font-size: 1.4em; font-weight: bold; color: #b45309;">未取得</div>
+        </div>
+
+        <div style="flex: 1; min-width: 150px; background-color: #faf5ff; border-left: 4px solid #8b5cf6; padding: 12px 15px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+          <div style="font-size: 0.85em; color: #5b21b6; margin-bottom: 4px; font-weight: 600;">平均光量</div>
+          <div style="font-size: 1.4em; font-weight: bold; color: #6d28d9;">未取得</div>
+        </div>
+
+      </div>
       <div class="stats" id="stats"></div>
     </div>
 
@@ -52,7 +74,6 @@
       </table>
     </div>
   </div>
-</div>
 
 <script>
   window.CSV_COLUMNS = {{ columns|tojson }};

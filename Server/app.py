@@ -17,6 +17,10 @@ def index():
     columns, rows = [], []
     error = None
     
+    # 平均値を計算するための変数（箱）を用意
+    avg_temp = 0
+    avg_hum = 0
+    
     # 3. ファイルが存在すれば中身を読み込む
     if selected_file:
         selected_path = DATA_DIR / selected_file
@@ -25,6 +29,27 @@ def index():
                 reader = csv.DictReader(f)
                 columns = list(reader.fieldnames or [])
                 rows = list(reader)
+                
+            # --- 【追加】温度と湿度の平均値を計算する処理 ---
+            temperatures = []
+            humidities = []
+            
+            for row in rows:
+                try:
+                    # 見出し名 "temp" と "humid" から数字を抜き出してリストに集める
+                    if row.get("temp") is not None:
+                        temperatures.append(float(row["temp"]))
+                    if row.get("humid") is not None:
+                        humidities.append(float(row["humid"]))
+                except (ValueError, TypeError):
+                    continue  # ヘッダーや空文字などのエラー対策
+            
+            # 合計 ÷ データ件数 で平均を出す（データが存在するときだけ）
+            if temperatures:
+                avg_temp = round(sum(temperatures) / len(temperatures), 1)
+            if humidities:
+                avg_hum = round(sum(humidities) / len(humidities), 1)
+            # -----------------------------------------------
         else:
             error = f"{selected_file} が見つかりません"
 
@@ -36,6 +61,8 @@ def index():
         rows=rows,
         row_count=len(rows),
         error=error,
+        avg_temperature=avg_temp,  # ★新しくHTMLに計算結果をパスする
+        avg_humidity=avg_hum       # ★新しくHTMLに計算結果をパスする
     )
 
 if __name__ == "__main__":
