@@ -30,7 +30,7 @@ CO2 センサーは `/dev/serial0`、光量センサーは SPI 接続の MCP3008
 
 ## 実行方法
 
-先に PC 側で `Sever/server.py` を起動し、`0.0.0.0:8765` などで待ち受けてください。
+先に PC 側で `Server/server.py` を起動し、`0.0.0.0:8765` などで待ち受けてください。
 その後、Raspberry Pi 側で PC の IP アドレスを指定してクライアントを起動します。
 
 ```bash
@@ -48,6 +48,8 @@ sudo python client.py -h 192.168.0.213 -p 8765
 ```json
 {"temp": 24.8, "humid": 60.2, "co2": 1235, "light_percent": 48.5}
 ```
+
+この JSON の末尾に改行を付け、5秒間隔で6回送信します。
 
 ## 注意点
 
