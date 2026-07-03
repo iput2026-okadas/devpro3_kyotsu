@@ -35,6 +35,20 @@ def test_csv_file_can_be_switched(page: Page, base_url: str) -> None:
     assert _column_values(page, 1) == ["101", "102"]
 
 
+def test_average_values_follow_selected_csv(page: Page, base_url: str) -> None:
+    page.goto(base_url)
+    temperature_card = page.get_by_text("平均温度", exact=True).locator("..")
+    humidity_card = page.get_by_text("平均湿度", exact=True).locator("..")
+
+    expect(temperature_card).to_contain_text("19.8 ℃")
+    expect(humidity_card).to_contain_text("47.8 %")
+
+    page.get_by_role("link", name=OLDER_FILE).click()
+
+    expect(temperature_card).to_contain_text("22.8 ℃")
+    expect(humidity_card).to_contain_text("45.8 %")
+
+
 def test_numeric_column_can_be_sorted(page: Page, base_url: str) -> None:
     page.goto(base_url)
     temperature_header = page.locator('th[data-col="temp"]')
