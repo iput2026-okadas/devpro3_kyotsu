@@ -23,8 +23,14 @@ def index():
     
     # 3. ファイルが存在すれば中身を読み込む
     if selected_file:
-        selected_path = DATA_DIR / selected_file
-        if selected_path.exists():
+        selected_path = (DATA_DIR / selected_file).resolve()
+        try:
+            selected_path.relative_to(DATA_DIR.resolve())
+            is_safe_path = selected_file in csv_files and selected_path.is_file()
+        except ValueError:
+            is_safe_path = False
+
+        if is_safe_path:
             with selected_path.open(newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 columns = list(reader.fieldnames or [])

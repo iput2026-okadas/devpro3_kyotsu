@@ -7,7 +7,10 @@ import datetime as dt
 import csv
 from pathlib import Path
 
-import alert
+try:
+    from . import alert
+except ImportError:
+    import alert
 
 SERVER = '127.0.0.1'
 WAITING_PORT = 8765
