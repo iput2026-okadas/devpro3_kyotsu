@@ -1,6 +1,12 @@
 import os
+from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
+
+
+ENV_FILE = Path(__file__).resolve().parent / ".env"
+load_dotenv(ENV_FILE)
 
 
 latest_data = {
@@ -12,18 +18,14 @@ latest_data = {
 
 current_status = "normal"
 
-# Discord または Slack の Webhook URL を設定します。
-# 実際の URL はコミットせず、環境変数 WEBHOOK_URL から読み込む形にします。
-WEBHOOK_URL = os.environ.get(
-    "WEBHOOK_URL",
-    "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL_HERE",
-)
+# 実際の URL はコミットせず、Server/.env または実行環境から読み込みます。
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 
 
 def send_alert(co2_value, level):
-    """Discord/Slack に通知を送る。"""
-    if not WEBHOOK_URL or "YOUR_WEBHOOK_URL" in WEBHOOK_URL:
-        print("Webhook URLが設定されていません。")
+    """Slack Incoming Webhook に通知を送る。"""
+    if not SLACK_WEBHOOK_URL:
+        print("SLACK_WEBHOOK_URLが設定されていません。")
         return
 
     if level == "warning":
@@ -35,11 +37,12 @@ def send_alert(co2_value, level):
     else:
         return
 
-    payload = {"content": message}  # Slack の場合は {"text": message}
+    payload = {"text": message}
     try:
-        requests.post(WEBHOOK_URL, json=payload, timeout=10)
+        response = requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=10)
+        response.raise_for_status()
         print(f"送信完了: {message}")
-    except Exception as e:
+    except requests.RequestException as e:
         print(f"通知送信エラー: {e}")
 
 
