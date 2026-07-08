@@ -26,7 +26,12 @@ def read_sensors():
     }
 
     try:
-        temp, humid = dht22.get_dht_data()
+        if hasattr(dht22, "get_dht_data_with_status"):
+            temp, humid, status, error = dht22.get_dht_data_with_status()
+            if status == "stale":
+                print(f"DHT22 read failed; using recent value: {error}")
+        else:
+            temp, humid = dht22.get_dht_data()
         data["temp"] = temp
         data["humid"] = humid
     except Exception as e:
@@ -83,5 +88,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("End of this client.")
     finally:
+        if hasattr(dht22, "close"):
+            dht22.close()
         if hasattr(co2, "close"):
             co2.close()

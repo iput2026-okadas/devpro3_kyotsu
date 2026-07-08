@@ -8,6 +8,7 @@ JSON 形式で送信するためのプログラムを配置しています。
 ```text
 Client/
   client.py            センサー値を読み取り、TCP サーバーへ JSON を送信する。
+  fake_sensor_client.py 実機なしでテスト用のセンサーデータを送信・表示・CSV保存する。
   dht22.py             DHT22 読み取り用の薄いラッパー。
   dht22_takemoto.py    lgpio を使う DHT22 実装。
   co2.py               MH-Z19 系 CO2 センサーを UART で読み取る。
@@ -62,4 +63,18 @@ sudo python client.py -h 192.168.0.213 -p 8765
 - 光量センサーは SPI bus 0、device 0、channel 0 の MCP3008 経由で読み取ります。
 - DHT22 の読み取りに失敗した場合、`client.py` は `temp` と `humid` を `None` にして
   送信します。
+- DHT22 の読み取りは最大3回再試行し、直近60秒以内の正常値がある場合はその値を
+  使用します。診断用に `python dht22.py` で読み取り状況を確認できます。
 - CO2 や光量の読み取りに失敗した場合も、該当値は `None` のまま送信されます。
+
+## 実機なしの送信テスト
+
+Raspberry Pi やセンサーが手元にない場合は、`fake_sensor_client.py` でテスト用の
+JSON を送信できます。
+
+```bash
+python fake_sensor_client.py -H <server-ip-address> -p 8765 -c 10 -i 1
+```
+
+`--dry-run` を付けると送信せず JSON を表示し、`--csv-out <path>` を指定すると
+テスト用 CSV を保存します。
