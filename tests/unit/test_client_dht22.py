@@ -76,6 +76,27 @@ class TestClientDHT22(unittest.TestCase):
 
         self.assertEqual(context.exception.error_code, "missing_data")
 
+    def test_get_dht_data_with_status_raises_when_recent_value_is_expired(self):
+        self.fake_sensor.read.return_value = (24.5, 60.0, None)
+        with patch.object(self.dht22.time, "time", return_value=100.0):
+            self.dht22.get_dht_data_with_status()
+
+        self.fake_sensor.read.side_effect = FakeCRCError("bad checksum")
+        with patch.object(self.dht22.time, "time", return_value=200.0):
+            with patch.object(self.dht22.time, "sleep"), self.assertRaises(
+                self.dht22.DHT22ReadError
+            ) as context:
+                self.dht22.get_dht_data_with_status()
+
+        self.assertEqual(context.exception.error_code, "CRC")
+
+    def test_get_dht_data_returns_temperature_and_humidity_only(self):
+        self.fake_sensor.read.return_value = (24.5, 60.0, None)
+
+        result = self.dht22.get_dht_data()
+
+        self.assertEqual(result, (24.5, 60.0))
+
     def test_close_closes_sensor_instance(self):
         self.dht22.close()
 
