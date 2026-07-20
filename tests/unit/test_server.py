@@ -28,19 +28,24 @@ class TestServer(unittest.TestCase):
         mock_datetime.now.return_value = REAL_DATETIME(2026, 7, 3, 12, 34, 56)
 
         with patch("sys.stdout", new_callable=io.StringIO):
-            server.add_data({"temp": 25.5, "humid": 60})
-            server.add_data({"temp": 26.0, "humid": 61})
+            server.add_data({"client_id": "raspi-lab", "temp": 25.5, "humid": 60})
+            server.add_data({"client_id": "raspi-office", "temp": 26.0, "humid": 61})
 
         self.assertEqual(
             server.data,
             [
-                [0, "2026-07-03 12:34:56", 25.5, 60],
-                [1, "2026-07-03 12:34:56", 26.0, 61],
+                [0, "raspi-lab", "2026-07-03 12:34:56", 25.5, 60],
+                [1, "raspi-office", "2026-07-03 12:34:56", 26.0, 61],
             ],
         )
 
     def test_add_data_rejects_missing_required_fields(self):
-        for incomplete_data in ({"humid": 60}, {"temp": 25.5}):
+        incomplete_rows = (
+            {"temp": 25.5, "humid": 60},
+            {"client_id": "raspi-lab", "humid": 60},
+            {"client_id": "raspi-lab", "temp": 25.5},
+        )
+        for incomplete_data in incomplete_rows:
             with self.subTest(data=incomplete_data):
                 server.data = []
 
@@ -49,12 +54,24 @@ class TestServer(unittest.TestCase):
 
                 self.assertEqual(server.data, [])
 
+    def test_add_data_rejects_empty_client_id(self):
+        for client_id in ("", "   ", None, 123):
+            with self.subTest(client_id=client_id):
+                server.data = []
+
+                with self.assertRaises(ValueError):
+                    server.add_data(
+                        {"client_id": client_id, "temp": 25.5, "humid": 60}
+                    )
+
+                self.assertEqual(server.data, [])
+
     @patch("Server.server.dt.datetime")
     def test_save_data_writes_header_and_rows(self, mock_datetime):
         mock_datetime.now.return_value = REAL_DATETIME(2026, 7, 3, 12, 34, 56)
         server.data = [
-            [0, "2026-07-03 12:00:00", 25.5, 60],
-            [1, "2026-07-03 12:05:00", 26.0, 61],
+            [0, "raspi-lab", "2026-07-03 12:00:00", 25.5, 60],
+            [1, "raspi-office", "2026-07-03 12:05:00", 26.0, 61],
         ]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -70,9 +87,9 @@ class TestServer(unittest.TestCase):
         self.assertEqual(
             rows,
             [
-                ["id", "timestamp", "temp", "humid"],
-                ["0", "2026-07-03 12:00:00", "25.5", "60"],
-                ["1", "2026-07-03 12:05:00", "26.0", "61"],
+                ["id", "client_id", "timestamp", "temp", "humid"],
+                ["0", "raspi-lab", "2026-07-03 12:00:00", "25.5", "60"],
+                ["1", "raspi-office", "2026-07-03 12:05:00", "26.0", "61"],
             ],
         )
 
@@ -89,7 +106,10 @@ class TestServer(unittest.TestCase):
             with output_path.open(newline="", encoding="utf-8") as csv_file:
                 rows = list(csv.reader(csv_file))
 
-        self.assertEqual(rows, [["id", "timestamp", "temp", "humid"]])
+        self.assertEqual(
+            rows,
+            [["id", "client_id", "timestamp", "temp", "humid"]],
+        )
 
     @patch("Server.server.alert.process_sensor_data")
     @patch("Server.server.add_data")
@@ -98,7 +118,12 @@ class TestServer(unittest.TestCase):
         mock_add_data,
         mock_process_sensor_data,
     ):
-        sensor_data = {"temp": 25.5, "humid": 60, "co2": 1100}
+        sensor_data = {
+            "client_id": "raspi-lab",
+            "temp": 25.5,
+            "humid": 60,
+            "co2": 1100,
+        }
         client_socket = MagicMock()
         client_socket.recv.side_effect = [json.dumps(sensor_data).encode("utf-8"), b""]
 

@@ -43,9 +43,10 @@ python server.py -h 0.0.0.0 -p 8765
 
 `Ctrl+C` で終了すると、受信済みデータを
 `data/data-YYYYMMDDHHMMSS.csv` として保存します。現在 CSV に保存する列は `id`,
-`timestamp`, `temp`, `humid` です。クライアントから送信される `co2` と
-`light_percent` は CSV 保存対象には含まれていません。通知判定に使われるのは
-`co2` のみです。
+`client_id`, `timestamp`, `temp`, `humid` です。`id` は受信順の連番、`client_id` は
+Raspberry Pi 側で `-i`（`--client-id`）に指定した識別名です。クライアントから
+送信される `co2` と `light_percent` は CSV 保存対象には含まれていません。
+通知判定に使われるのは `co2` のみです。
 
 現在の受信処理は、1回の `recv(1024)` で1つの完全な JSON を受信する前提です。
 TCP 上でJSONが分割または結合された場合のバッファリング処理は未実装です。
@@ -62,6 +63,8 @@ python app.py
 
 ブラウザで `http://localhost:5001/` を開きます。ファイルの切り替え、列ごとの並べ替え、
 平均温度・平均湿度の表示、CSVまたはJSON形式でのエクスポートができます。
+新しいCSVでは `client_id` 列から各行の送信元を確認できます。従来の `client_id` 列が
+ないCSVも引き続き表示できます。
 
 ## Webhook アラート
 
@@ -97,7 +100,7 @@ python server.py -h 0.0.0.0 -p 8765
 通知判定で扱う JSON は `Client/client.py` が送信する形式と同じです。
 
 ```json
-{"temp": 24.8, "humid": 60.2, "co2": 1235, "light_percent": 48.5}
+{"client_id": "raspi-lab", "temp": 24.8, "humid": 60.2, "co2": 1235, "light_percent": 48.5}
 ```
 
 ## 環境判定とチャットボット

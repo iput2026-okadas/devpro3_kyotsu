@@ -23,7 +23,12 @@ class TestApp(unittest.TestCase):
         app_module.app.config.update(TESTING=True)
         self.client = app_module.app.test_client()
 
-    def _write_csv(self, name, rows, columns=("id", "timestamp", "temp", "humid")):
+    def _write_csv(
+        self,
+        name,
+        rows,
+        columns=("id", "client_id", "timestamp", "temp", "humid"),
+    ):
         path = self.data_dir / name
         with path.open("w", newline="", encoding="utf-8") as csv_file:
             writer = csv.writer(csv_file)
@@ -42,13 +47,13 @@ class TestApp(unittest.TestCase):
     def test_index_selects_latest_csv_by_default(self):
         self._write_csv(
             "data-20260702120000.csv",
-            [[1, "2026-07-02 12:00:00", 20, 40]],
+            [[1, "raspi-lab", "2026-07-02 12:00:00", 20, 40]],
         )
         self._write_csv(
             "data-20260703120000.csv",
             [
-                [1, "2026-07-03 12:00:00", 25, 50],
-                [2, "2026-07-03 12:05:00", 26, 52],
+                [1, "raspi-lab", "2026-07-03 12:00:00", 25, 50],
+                [2, "raspi-office", "2026-07-03 12:05:00", 26, 52],
             ],
         )
 
@@ -59,18 +64,25 @@ class TestApp(unittest.TestCase):
             ["data-20260703120000.csv", "data-20260702120000.csv"],
         )
         self.assertEqual(context["selected_file"], "data-20260703120000.csv")
-        self.assertEqual(context["columns"], ["id", "timestamp", "temp", "humid"])
+        self.assertEqual(
+            context["columns"],
+            ["id", "client_id", "timestamp", "temp", "humid"],
+        )
         self.assertEqual(context["row_count"], 2)
         self.assertEqual([row["id"] for row in context["rows"]], ["1", "2"])
+        self.assertEqual(
+            [row["client_id"] for row in context["rows"]],
+            ["raspi-lab", "raspi-office"],
+        )
 
     def test_index_loads_selected_csv(self):
         self._write_csv(
             "data-20260702120000.csv",
-            [[101, "2026-07-02 12:00:00", 22, 45]],
+            [[101, "raspi-lab", "2026-07-02 12:00:00", 22, 45]],
         )
         self._write_csv(
             "data-20260703120000.csv",
-            [[201, "2026-07-03 12:00:00", 25, 50]],
+            [[201, "raspi-office", "2026-07-03 12:00:00", 25, 50]],
         )
 
         context = self._get_template_context(
@@ -80,14 +92,15 @@ class TestApp(unittest.TestCase):
         self.assertEqual(context["selected_file"], "data-20260702120000.csv")
         self.assertEqual(context["row_count"], 1)
         self.assertEqual(context["rows"][0]["id"], "101")
+        self.assertEqual(context["rows"][0]["client_id"], "raspi-lab")
 
     def test_index_calculates_rounded_averages_and_ignores_invalid_rows(self):
         self._write_csv(
             "data-20260703120000.csv",
             [
-                [1, "2026-07-03 12:00:00", 10, 40],
-                [2, "2026-07-03 12:05:00", 21, 51],
-                [3, "2026-07-03 12:10:00", "invalid", "invalid"],
+                [1, "raspi-lab", "2026-07-03 12:00:00", 10, 40],
+                [2, "raspi-office", "2026-07-03 12:05:00", 21, 51],
+                [3, "raspi-lab", "2026-07-03 12:10:00", "invalid", "invalid"],
             ],
         )
 
@@ -101,7 +114,10 @@ class TestApp(unittest.TestCase):
 
         context = self._get_template_context()
 
-        self.assertEqual(context["columns"], ["id", "timestamp", "temp", "humid"])
+        self.assertEqual(
+            context["columns"],
+            ["id", "client_id", "timestamp", "temp", "humid"],
+        )
         self.assertEqual(context["rows"], [])
         self.assertEqual(context["row_count"], 0)
         self.assertEqual(context["avg_temperature"], 0)
@@ -110,8 +126,8 @@ class TestApp(unittest.TestCase):
     def test_index_handles_csv_without_temperature_or_humidity_columns(self):
         self._write_csv(
             "data-20260703120000.csv",
-            [[1, "2026-07-03 12:00:00"]],
-            columns=("id", "timestamp"),
+            [[1, "raspi-lab", "2026-07-03 12:00:00"]],
+            columns=("id", "client_id", "timestamp"),
         )
 
         context = self._get_template_context()
@@ -119,6 +135,19 @@ class TestApp(unittest.TestCase):
         self.assertEqual(context["row_count"], 1)
         self.assertEqual(context["avg_temperature"], 0)
         self.assertEqual(context["avg_humidity"], 0)
+
+    def test_index_remains_compatible_with_csv_without_client_id(self):
+        self._write_csv(
+            "data-20260703120000.csv",
+            [[1, "2026-07-03 12:00:00", 25, 50]],
+            columns=("id", "timestamp", "temp", "humid"),
+        )
+
+        context = self._get_template_context()
+
+        self.assertEqual(context["columns"], ["id", "timestamp", "temp", "humid"])
+        self.assertEqual(context["rows"][0]["temp"], "25")
+        self.assertEqual(context["avg_temperature"], 25.0)
 
     def test_index_reports_missing_csv(self):
         context = self._get_template_context({"file": "data-missing.csv"})
@@ -132,8 +161,8 @@ class TestApp(unittest.TestCase):
         outside_file = self.temp_root / "data-outside.csv"
         with outside_file.open("w", newline="", encoding="utf-8") as csv_file:
             writer = csv.writer(csv_file)
-            writer.writerow(("id", "timestamp", "temp", "humid"))
-            writer.writerow((999, "2026-07-03 12:00:00", 99, 99))
+            writer.writerow(("id", "client_id", "timestamp", "temp", "humid"))
+            writer.writerow((999, "raspi-outside", "2026-07-03 12:00:00", 99, 99))
 
         for requested_file in ("../data-outside.csv", str(outside_file.resolve())):
             with self.subTest(file=requested_file):

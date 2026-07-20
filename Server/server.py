@@ -19,16 +19,24 @@ LOOP_INTERVAL = 5
 DATA_DIR = Path(__file__).resolve().parent / "data"
 
 # CSV関係
-column = ["id", "timestamp", "temp", "humid"]
+column = ["id", "client_id", "timestamp", "temp", "humid"]
 data = []
 
 def add_data(data_dict):
-    print(f"add_data temp: {data_dict["temp"]}, humid: {data_dict["humid"]}")
+    client_id = data_dict["client_id"]
+    temp = data_dict["temp"]
+    humid = data_dict["humid"]
+    if not isinstance(client_id, str) or not client_id.strip():
+        raise ValueError("client_id must be a non-empty string")
+
+    client_id = client_id.strip()
+    print(f"add_data client_id: {client_id}, temp: {temp}, humid: {humid}")
     data.append([
         len(data),
+        client_id,
         dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        data_dict["temp"],
-        data_dict["humid"]
+        temp,
+        humid
     ])
 
 def save_data():

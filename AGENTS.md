@@ -59,11 +59,11 @@ docs/
 
 ## 実行時の注意点
 
-- `Client/client.py` が送信する JSON キーは `temp`, `humid`, `co2`,
-  `light_percent` です。
+- `Client/client.py` が送信する JSON キーは `client_id`, `temp`, `humid`, `co2`,
+  `light_percent` です。`client_id` は `-i`（`--client-id`）で必ず指定します。
 - クライアントは JSON の末尾に改行を付け、5秒間隔で6回送信します。
-- `Server/server.py` が CSV に保存する列は `id`, `timestamp`, `temp`, `humid`
-  のみです。`co2` と `light_percent` は CSV には保存されません。
+- `Server/server.py` が CSV に保存する列は `id`, `client_id`, `timestamp`, `temp`,
+  `humid` のみです。`co2` と `light_percent` は CSV には保存されません。
 - `Server/alert.py` はクライアントと同じ JSON 形式を受け取り、CO2 値だけを通知判定に
   使用します。1000 ppm 以上は注意、1500 ppm 以上は警告、1000 ppm 未満へ戻ると
   回復を通知します。同じ状態が続く間は通知を繰り返しません。
@@ -91,7 +91,7 @@ TCP クライアントを起動する場合:
 
 ```bash
 cd Client
-sudo python client.py -h <server-ip-address> -p 8765
+sudo python client.py -i <client-id> -h <server-ip-address> -p 8765
 ```
 
 サーバー側の環境を準備する場合:

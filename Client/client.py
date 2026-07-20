@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import argparse
 import json
 import socket
-import sys
 import time
 
 import co2
@@ -45,15 +45,17 @@ def read_sensors():
     return data
 
 
-def client_test(hostname_v1=SERVER, waiting_port_v1=WAITING_PORT):
+def client_test(client_id, hostname_v1=SERVER, waiting_port_v1=WAITING_PORT):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_r_s:
         socket_r_s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         socket_r_s.connect((hostname_v1, waiting_port_v1))
 
         for _ in range(SEND_COUNT):
             data = read_sensors()
+            data["client_id"] = client_id
             print(
-                "temp: {temp}, humid: {humid}, co2: {co2}, light: {light_percent} %".format(
+                "client_id: {client_id}, temp: {temp}, humid: {humid}, "
+                "co2: {co2}, light: {light_percent} %".format(
                     **data
                 )
             )
@@ -62,24 +64,36 @@ def client_test(hostname_v1=SERVER, waiting_port_v1=WAITING_PORT):
             time.sleep(WAIT_INTERVAL)
 
 
-if __name__ == "__main__":
-    sys_argc = len(sys.argv)
-    count = 1
-    hostname_v = SERVER
-    waiting_port_v = WAITING_PORT
+def non_empty_client_id(value):
+    client_id = value.strip()
+    if not client_id:
+        raise argparse.ArgumentTypeError("client ID must not be empty")
+    return client_id
 
-    while count < sys_argc:
-        option_key = sys.argv[count]
-        if option_key == "-h":
-            count += 1
-            hostname_v = sys.argv[count]
-        elif option_key == "-p":
-            count += 1
-            waiting_port_v = int(sys.argv[count])
-        count += 1
+
+def parse_arguments(args=None):
+    parser = argparse.ArgumentParser(
+        description="センサーデータをTCPサーバーへ送信します。",
+        add_help=False,
+    )
+    parser.add_argument("--help", action="help", help="このヘルプを表示します。")
+    parser.add_argument("-h", "--host", default=SERVER, help="接続先サーバーのホスト名")
+    parser.add_argument("-p", "--port", type=int, default=WAITING_PORT, help="接続先ポート")
+    parser.add_argument(
+        "-i",
+        "--client-id",
+        required=True,
+        type=non_empty_client_id,
+        help="このRaspberry Piを識別するID名",
+    )
+    return parser.parse_args(args)
+
+
+if __name__ == "__main__":
+    arguments = parse_arguments()
 
     try:
-        client_test(hostname_v, waiting_port_v)
+        client_test(arguments.client_id, arguments.host, arguments.port)
     except KeyboardInterrupt:
         print("End of this client.")
     finally:

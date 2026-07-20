@@ -36,20 +36,23 @@ MCP3008 の読み取りには `spidev` も必要ですが、現在は `requireme
 その後、Raspberry Pi 側で PC の IP アドレスを指定してクライアントを起動します。
 
 ```bash
-sudo python client.py -h <server-ip-address> -p 8765
+sudo python client.py -i <client-id> -h <server-ip-address> -p 8765
 ```
 
 例:
 
 ```bash
-sudo python client.py -h 192.168.0.213 -p 8765
+sudo python client.py -i raspi-lab -h 192.168.0.213 -p 8765
 ```
 
 送信する JSON は次の形式です。
 
 ```json
-{"temp": 24.8, "humid": 60.2, "co2": 1235, "light_percent": 48.5}
+{"client_id": "raspi-lab", "temp": 24.8, "humid": 60.2, "co2": 1235, "light_percent": 48.5}
 ```
+
+`-i`（`--client-id`）は必須です。CSV 上で送信元を識別できるように、Raspberry Pi
+ごとに重複しない名前を指定してください。空のID名は指定できません。
 
 この JSON の末尾に改行を付け、5秒間隔で6回送信します。
 
