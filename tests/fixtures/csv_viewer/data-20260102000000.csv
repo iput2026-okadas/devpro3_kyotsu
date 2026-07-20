@@ -1,4 +1,4 @@
-id,client_id,timestamp,temp,humid
-201,raspi-office,2026-01-02 09:00:00,30.0,60.0
-202,raspi-lab,2026-01-02 09:05:00,8.0,35.5
-203,raspi-office,2026-01-02 09:10:00,21.5,48.0
+id,client_id,timestamp,temp,humid,co2,light_percent
+201,raspi-office,2026-01-02 09:00:00,30.0,60.0,1600,82.0
+202,raspi-lab,2026-01-02 09:05:00,8.0,35.5,650,15.0
+203,raspi-office,2026-01-02 09:10:00,21.5,48.0,1100,48.0
