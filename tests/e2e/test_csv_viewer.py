@@ -81,6 +81,54 @@ def test_csv_and_json_can_be_exported(page: Page, base_url: str) -> None:
     assert [row["id"] for row in exported_rows] == ["201", "202", "203"]
 
 
+def test_data_can_be_added_from_dialog_in_timestamp_order(
+    page: Page,
+    base_url: str,
+) -> None:
+    page.goto(base_url)
+
+    page.get_by_role("button", name="データ追加").click()
+    dialog = page.get_by_role("dialog", name="センサーデータを追加")
+    expect(dialog).to_be_visible()
+    expect(dialog.locator("#client-id option")).to_have_count(4)
+    expect(dialog.locator("#timestamp")).to_have_value(
+        re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+    )
+
+    dialog.locator("#client-id").select_option("201")
+    dialog.locator("#timestamp").fill("2026-01-02T09:07:30")
+    dialog.locator('[name="temp"]').fill("22.2")
+    dialog.locator('[name="humid"]').fill("49.3")
+    dialog.locator('[name="co2"]').fill("880")
+    dialog.locator('[name="light_percent"]').fill("52.5")
+    dialog.get_by_role("button", name="データを追加").click()
+
+    page.wait_for_url(re.compile(rf"\?file={re.escape(LATEST_FILE)}$"))
+    expect(page.locator("#table-header th")).to_have_count(6)
+    expect(page.locator("#table-body tr")).to_have_count(4)
+    expect(page.locator("#stats")).to_have_text("表示中: 4 / 全 4 件")
+    assert _column_values(page, 1) == ["201", "202", "201", "203"]
+    assert _column_values(page, 2) == [
+        "2026-01-02 09:00:00",
+        "2026-01-02 09:05:00",
+        "2026-01-02 09:07:30",
+        "2026-01-02 09:10:00",
+    ]
+    added_row = page.locator("#table-body tr").nth(2)
+    expect(added_row).to_have_text(re.compile(r"201.*22\.2.*49\.3.*880.*52\.5"))
+
+
+def test_add_data_dialog_can_be_cancelled(page: Page, base_url: str) -> None:
+    page.goto(base_url)
+
+    page.get_by_role("button", name="データ追加").click()
+    dialog = page.get_by_role("dialog", name="センサーデータを追加")
+    dialog.get_by_role("button", name="キャンセル").click()
+
+    expect(dialog).not_to_be_visible()
+    expect(page.locator("#table-body tr")).to_have_count(3)
+
+
 def test_missing_csv_shows_an_error(page: Page, base_url: str) -> None:
     page.goto(f"{base_url}/?file=missing.csv")
 

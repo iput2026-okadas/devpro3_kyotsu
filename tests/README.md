@@ -31,8 +31,8 @@ python -m unittest discover -s tests/unit -p "test_*.py"
 ```
 
 現在は `alert.py` の通知と状態遷移、`server.py` の行追加・CSV保存・TCP受信、
-`app.py` のCSV選択・平均値計算・異常系、`Client/` のセンサー読み取り・送信形式・
-CO2/光量ラッパーを検証しています。
+`app.py` のCSV選択・平均値計算・データ追加・異常系、`Client/` のセンサー読み取り・
+送信形式・CO2/光量ラッパーを検証しています。
 
 `alert.py` のテストでは Slack Webhook 通信をモックするため、`Server/.env` や実際の
 `SLACK_WEBHOOK_URL` は不要です。Unit Testへ実際のWebhook URLを記載しないでください。

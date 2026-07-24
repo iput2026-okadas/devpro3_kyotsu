@@ -61,7 +61,14 @@ python app.py
 ```
 
 ブラウザで `http://localhost:5001/` を開きます。ファイルの切り替え、列ごとの並べ替え、
-平均温度・平均湿度の表示、CSVまたはJSON形式でのエクスポートができます。
+平均温度・平均湿度の表示、CSVまたはJSON形式でのエクスポート、センサーデータの追加が
+できます。
+
+「データ追加」では、選択中のCSVに存在する `client-id` を選び、秒単位の
+`timestamp`、`temp`、`humid`、`co2`、`light_percent` を入力します。既存形式の
+CSVでは `id` 列を `client-id` として扱います。`co2` または `light_percent` 列が
+ないCSVへ初めて追加した場合はその2列を末尾へ追加し、全行を `timestamp` の昇順に
+並べて保存します。
 
 ## Webhook アラート
 

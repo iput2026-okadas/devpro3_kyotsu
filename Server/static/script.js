@@ -112,6 +112,78 @@ document.addEventListener('DOMContentLoaded', () => {
     a.remove();
   });
 
+  const addDialog = document.getElementById('add-data-dialog');
+  const addForm = document.getElementById('add-data-form');
+  const openAddDialogButton = document.getElementById('open-add-dialog');
+  const cancelAddDataButton = document.getElementById('cancel-add-data');
+  const submitAddDataButton = document.getElementById('submit-add-data');
+  const addDataError = document.getElementById('add-data-error');
+  const timestampInput = document.getElementById('timestamp');
+
+  function currentLocalTimestamp() {
+    const now = new Date();
+    const pad = value => String(value).padStart(2, '0');
+    return [
+      now.getFullYear(),
+      pad(now.getMonth() + 1),
+      pad(now.getDate())
+    ].join('-') + 'T' + [
+      pad(now.getHours()),
+      pad(now.getMinutes()),
+      pad(now.getSeconds())
+    ].join(':');
+  }
+
+  openAddDialogButton.addEventListener('click', () => {
+    addForm.reset();
+    addDataError.textContent = '';
+    timestampInput.value = currentLocalTimestamp();
+    addDialog.showModal();
+  });
+
+  cancelAddDataButton.addEventListener('click', () => {
+    addDialog.close();
+  });
+
+  addDialog.addEventListener('click', event => {
+    if (event.target === addDialog) {
+      addDialog.close();
+    }
+  });
+
+  addForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    addDataError.textContent = '';
+
+    const formValues = Object.fromEntries(new FormData(addForm).entries());
+    submitAddDataButton.disabled = true;
+    submitAddDataButton.textContent = '追加中…';
+
+    try {
+      const response = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file: SELECTED_FILE,
+          ...formValues
+        })
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'データを追加できませんでした');
+      }
+
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set('file', SELECTED_FILE);
+      window.location.assign(nextUrl);
+    } catch (error) {
+      addDataError.textContent = error.message || 'データを追加できませんでした';
+      submitAddDataButton.disabled = false;
+      submitAddDataButton.textContent = 'データを追加';
+    }
+  });
+
   // 初期実行
   if (COLUMNS.length > 0) {
     initHeader();
