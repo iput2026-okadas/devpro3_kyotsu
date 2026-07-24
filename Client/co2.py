@@ -13,8 +13,6 @@ except ImportError as e:
 SERIAL_DEVICE = "/dev/serial0"
 BAUD_RATE = 9600
 WARM_UP_TIME = 10
-WAIT_INTERVAL_RETRY = 5
-READ_RETRY_COUNT = 3
 READ_COMMAND = b"\xff\x01\x86\x00\x00\x00\x00\x00\x79"
 
 _initialized_time = time.time()
@@ -67,18 +65,12 @@ def get_co2_data():
     if elapsed < WARM_UP_TIME:
         time.sleep(WARM_UP_TIME - elapsed)
 
-    last_error = None
-    for _ in range(READ_RETRY_COUNT):
-        try:
-            return int(_read_co2_once())
-        except Exception as e:
-            last_error = e
-            time.sleep(WAIT_INTERVAL_RETRY)
-
-    if last_error is not None:
-        raise CO2ReadError(f"CO2 sensor read failed: {last_error}") from last_error
-
-    raise CO2ReadError("CO2 sensor read failed")
+    try:
+        return int(_read_co2_once())
+    except CO2ReadError:
+        raise
+    except Exception as e:
+        raise CO2ReadError(f"CO2 sensor read failed: {e}") from e
 
 
 def print_co2_data():

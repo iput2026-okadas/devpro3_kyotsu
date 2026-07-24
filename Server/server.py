@@ -17,6 +17,7 @@ WAITING_PORT = 8765
 BACKLOG = 5
 LOOP_INTERVAL = 5
 DATA_DIR = Path(__file__).resolve().parent / "data"
+SENSOR_FIELDS = ("client_id", "temp", "humid", "co2", "light_percent")
 
 # CSV関係
 column = ["id", "client_id", "timestamp", "temp", "humid"]
@@ -24,6 +25,10 @@ data = []
 
 
 def add_data(data_dict):
+    if data_dict.get("temp") is None or data_dict.get("humid") is None:
+        print("Skip incomplete CSV data: temp or humid is missing")
+        return False
+
     client_id = data_dict["client_id"]
     if not isinstance(client_id, str) or not client_id.strip():
         raise ValueError("client_id must be a non-empty string")
@@ -42,6 +47,7 @@ def add_data(data_dict):
             data_dict["humid"],
         ]
     )
+    return True
 
 
 def save_data():
@@ -63,6 +69,15 @@ def recv_data1024(socket1, client_addr):
             if not data_r:  # 正常切断（FIN）
                 break
             data_dict = json.loads(data_r.decode("utf-8"))
+            missing = [
+                field for field in SENSOR_FIELDS if data_dict.get(field) is None
+            ]
+            if missing:
+                print(
+                    "Skip incomplete sensor data; wait for next measurement: "
+                    + ", ".join(missing)
+                )
+                continue
             add_data(data_dict)
             alert.process_sensor_data(data_dict)
     except ConnectionResetError:

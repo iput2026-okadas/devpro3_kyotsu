@@ -135,7 +135,7 @@ class TestClientCO2(unittest.TestCase):
         self.assertEqual(result, 1000)
         mock_sleep.assert_called_once_with(5.0)
 
-    def test_get_co2_data_retries_and_raises_after_failures(self):
+    def test_get_co2_data_raises_without_retry(self):
         with patch.object(self.co2.time, "time", return_value=self.co2._initialized_time + 99):
             with patch.object(self.co2.time, "sleep") as mock_sleep:
                 with patch.object(
@@ -148,8 +148,8 @@ class TestClientCO2(unittest.TestCase):
                     ):
                         self.co2.get_co2_data()
 
-        self.assertEqual(mock_read.call_count, self.co2.READ_RETRY_COUNT)
-        self.assertEqual(mock_sleep.call_count, self.co2.READ_RETRY_COUNT)
+        mock_read.assert_called_once_with()
+        mock_sleep.assert_not_called()
 
 
 if __name__ == "__main__":
