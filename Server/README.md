@@ -10,6 +10,7 @@
 Server/
   server.py               TCP JSON 受信サーバーと CSV 書き出し処理。
   app.py                  Flask 製の CSV ビューア。
+  ai_chatbot.py           CSV 集計と Ollama 連携を行う AI チャット処理。
   alert.py                CO2 アラート用の Webhook 通知判定モジュール。
   analyze_environment.py  室内環境の詳細なルールベース判定処理。
   environment_advisor.py  チャットボット用の簡易環境判定処理。
@@ -65,6 +66,16 @@ python app.py
 平均温度・平均湿度の表示、CSVまたはJSON形式でのエクスポートができます。
 新しいCSVでは `client_id` 列から各行の送信元を確認できます。従来の `client_id` 列が
 ないCSVも引き続き表示できます。
+
+右下の「AI分析」から、選択中CSVの直近最大30件についてOllamaへ質問できます。
+既定モデルは `gemma3:4b` です。利用前にモデルを取得してください。
+
+```bash
+ollama pull gemma3:4b
+```
+
+モデル名は `OLLAMA_MODEL`、Chat APIの完全なURLは `OLLAMA_URL` で変更できます。
+詳しい構成、対応CSV列、API、検証方法は `../docs/ai-chat.md` を参照してください。
 
 ## Webhook アラート
 

@@ -74,6 +74,59 @@
       </table>
     </div>
   </div>
+</div>
+
+<button
+  id="chatbot-toggle"
+  class="chatbot-toggle"
+  type="button"
+  aria-controls="chatbot-panel"
+  aria-expanded="false"
+>
+  <span aria-hidden="true">💬</span>
+  <span>AI分析</span>
+</button>
+
+<section
+  id="chatbot-panel"
+  class="chatbot-panel"
+  role="dialog"
+  aria-labelledby="chatbot-title"
+  aria-hidden="true"
+>
+  <header class="chatbot-header">
+    <div>
+      <h2 id="chatbot-title">CSV分析チャット</h2>
+      <p>{{ selected_file or 'CSV未選択' }}</p>
+    </div>
+    <div class="chatbot-header-actions">
+      <button id="chatbot-reset" type="button">履歴削除</button>
+      <button id="chatbot-close" type="button" aria-label="チャットを閉じる">×</button>
+    </div>
+  </header>
+
+  <div id="chatbot-messages" class="chatbot-messages" aria-live="polite">
+    <div class="chat-message assistant">
+      <div class="chat-message-label">AI</div>
+      <div class="chat-message-bubble">
+        選択中のCSVについて質問してください。直近最大30件を分析します。
+      </div>
+    </div>
+  </div>
+
+  <div id="chatbot-status" class="chatbot-status" aria-live="polite"></div>
+
+  <form id="chatbot-form" class="chatbot-form">
+    <label class="visually-hidden" for="chatbot-input">CSVについての質問</label>
+    <textarea
+      id="chatbot-input"
+      maxlength="1000"
+      rows="2"
+      placeholder="例: 最近、室温が上がった原因は？"
+    ></textarea>
+    <button id="chatbot-send" type="submit">送信</button>
+  </form>
+</section>
 
 <script>
   window.CSV_COLUMNS = {{ columns|tojson }};

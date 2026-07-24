@@ -31,6 +31,7 @@ JSON 形式で送信します。
 ├── Server/
 │   ├── server.py
 │   ├── app.py
+│   ├── ai_chatbot.py
 │   ├── alert.py
 │   ├── analyze_environment.py
 │   ├── environment_advisor.py
@@ -49,6 +50,7 @@ JSON 形式で送信します。
 │   ├── requirements.txt
 │   └── README.md
 ├── docs/
+│   ├── ai-chat.md
 │   ├── test-e2e-scenario.md
 │   └── test-unit-scenario.md
 └── README.md
@@ -108,6 +110,8 @@ python app.py
 
 ブラウザで `http://localhost:5001/` を開くと、CSV の一覧、内容、平均温度、平均湿度を
 確認できます。列の並べ替えと CSV・JSON エクスポートにも対応しています。
+右下の「AI分析」では、ローカルOllamaを使って選択中CSVへ質問できます。セットアップ、
+対応CSV列、API仕様、テスト方法は `docs/ai-chat.md` を参照してください。
 
 ### 4. Webhook アラートを設定する
 
@@ -169,7 +173,7 @@ python chatbot-main.py
 構文確認には次のコマンドを使います。
 
 ```bash
-python -m py_compile Client/client.py Client/co2.py Client/dht22.py Client/dht22_takemoto.py Client/light.py Client/light_mcp3008.py Server/server.py Server/alert.py Server/app.py Server/analyze_environment.py Server/environment_advisor.py Server/chatbot.py Server/chatbot-main.py
+python -m py_compile Client/client.py Client/co2.py Client/dht22.py Client/dht22_takemoto.py Client/light.py Client/light_mcp3008.py Server/server.py Server/alert.py Server/app.py Server/ai_chatbot.py Server/analyze_environment.py Server/environment_advisor.py Server/chatbot.py Server/chatbot-main.py
 ```
 
 テスト方針は `tests/README.md` にまとめています。Python の単体テストは

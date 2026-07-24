@@ -184,6 +184,83 @@ class TestApp(unittest.TestCase):
         self.assertEqual(context["avg_temperature"], 0)
         self.assertEqual(context["avg_humidity"], 0)
 
+    def test_chat_returns_ai_response_for_selected_csv(self):
+        self._write_csv(
+            "data-20260703120000.csv",
+            [[1, "raspi-lab", "2026-07-03 12:00:00", 25, 50]],
+        )
+        conversation = [{"role": "user", "content": "前の質問"}]
+
+        with patch.object(
+            app_module.CHATBOT,
+            "chat",
+            return_value="温度は安定しています。",
+        ) as mock_chat:
+            response = self.client.post(
+                "/api/chat",
+                json={
+                    "message": " 現在の状態は？ ",
+                    "file": "data-20260703120000.csv",
+                    "conversation": conversation,
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.get_json(),
+            {
+                "response": "温度は安定しています。",
+                "selected_file": "data-20260703120000.csv",
+            },
+        )
+        mock_chat.assert_called_once_with(
+            "現在の状態は？",
+            "data-20260703120000.csv",
+            conversation,
+        )
+
+    def test_chat_validates_question_and_selected_csv(self):
+        empty_response = self.client.post("/api/chat", json={"message": "  "})
+        self.assertEqual(empty_response.status_code, 400)
+
+        missing_response = self.client.post(
+            "/api/chat",
+            json={
+                "message": "現在の状態は？",
+                "file": "../outside.csv",
+            },
+        )
+        self.assertEqual(missing_response.status_code, 404)
+
+    def test_chat_maps_analysis_and_ollama_errors_to_http_statuses(self):
+        self._write_csv(
+            "data-20260703120000.csv",
+            [[1, "raspi-lab", "2026-07-03 12:00:00", 25, 50]],
+        )
+        cases = (
+            (app_module.CsvDataError("CSV不正"), 422),
+            (app_module.OllamaConnectionError("接続不可"), 503),
+            (app_module.OllamaResponseError("応答不正"), 502),
+        )
+
+        for error, expected_status in cases:
+            with self.subTest(error=error):
+                with patch.object(
+                    app_module.CHATBOT,
+                    "chat",
+                    side_effect=error,
+                ):
+                    response = self.client.post(
+                        "/api/chat",
+                        json={
+                            "message": "現在の状態は？",
+                            "file": "data-20260703120000.csv",
+                        },
+                    )
+
+                self.assertEqual(response.status_code, expected_status)
+                self.assertEqual(response.get_json()["error"], str(error))
+
 
 if __name__ == "__main__":
     unittest.main()

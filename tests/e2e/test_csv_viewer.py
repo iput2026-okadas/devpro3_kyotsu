@@ -20,7 +20,7 @@ def test_latest_csv_is_selected_and_rendered(page: Page, base_url: str) -> None:
     expect(page).to_have_title(re.compile(LATEST_FILE))
     expect(page.locator(".file-list a")).to_have_count(2)
     expect(page.locator(".file-list a.active")).to_have_text(LATEST_FILE)
-    expect(page.locator("#table-header th")).to_have_count(5)
+    expect(page.locator("#table-header th")).to_have_count(7)
     expect(page.locator("#table-body tr")).to_have_count(3)
     expect(page.locator("#stats")).to_have_text("表示中: 3 / 全 3 件")
     assert _column_values(page, 2) == ["raspi-office", "raspi-lab", "raspi-office"]
@@ -71,7 +71,9 @@ def test_csv_and_json_can_be_exported(page: Page, base_url: str) -> None:
     csv_download = csv_download_info.value
     assert csv_download.suggested_filename == LATEST_FILE
     csv_text = csv_download.path().read_text(encoding="utf-8")
-    assert csv_text.splitlines()[0] == '"id","client_id","timestamp","temp","humid"'
+    assert csv_text.splitlines()[0] == (
+        '"id","client_id","timestamp","temp","humid","co2","light_percent"'
+    )
     assert len(csv_text.splitlines()) == 4
 
     with page.expect_download() as json_download_info:
@@ -94,3 +96,46 @@ def test_missing_csv_shows_an_error(page: Page, base_url: str) -> None:
         "missing.csv が見つかりません"
     )
     expect(page.locator("#table-body tr")).to_have_count(0)
+
+
+def test_ai_chat_sends_selected_csv_and_displays_response(
+    page: Page,
+    base_url: str,
+) -> None:
+    captured_request = {}
+
+    def handle_chat(route) -> None:
+        captured_request.update(route.request.post_data_json)
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps(
+                {
+                    "response": "直近3件では温度差が22℃あります。",
+                    "selected_file": LATEST_FILE,
+                }
+            ),
+        )
+
+    page.route("**/api/chat", handle_chat)
+    page.goto(base_url)
+    page.get_by_role("button", name="AI分析").click()
+
+    expect(page.get_by_role("dialog", name="CSV分析チャット")).to_be_visible()
+    page.get_by_label("CSVについての質問").fill("温度変化を教えて")
+    page.get_by_role("button", name="送信").click()
+
+    expect(page.locator(".chat-message.user .chat-message-bubble")).to_have_text(
+        "温度変化を教えて"
+    )
+    expect(
+        page.locator(".chat-message.assistant .chat-message-bubble").last
+    ).to_have_text("直近3件では温度差が22℃あります。")
+    assert captured_request["message"] == "温度変化を教えて"
+    assert captured_request["file"] == LATEST_FILE
+
+    page.get_by_role("button", name="履歴削除").click()
+    expect(page.locator(".chat-message")).to_have_count(1)
+    expect(page.locator(".chat-message-bubble")).to_have_text(
+        "会話履歴を削除しました。"
+    )

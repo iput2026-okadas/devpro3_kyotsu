@@ -118,4 +118,154 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSortIndicators();
     renderTable(sortedRows);
   }
+
+  initChatbot();
+
+  function initChatbot() {
+    const panel = document.getElementById('chatbot-panel');
+    const toggle = document.getElementById('chatbot-toggle');
+    const close = document.getElementById('chatbot-close');
+    const reset = document.getElementById('chatbot-reset');
+    const form = document.getElementById('chatbot-form');
+    const input = document.getElementById('chatbot-input');
+    const messages = document.getElementById('chatbot-messages');
+    const status = document.getElementById('chatbot-status');
+    const send = document.getElementById('chatbot-send');
+    const storageKey = `csv-ai-chat:${SELECTED_FILE || 'no-file'}`;
+    let conversation = loadConversation(storageKey);
+
+    conversation.forEach(item => {
+      appendChatMessage(messages, item.role, item.content);
+    });
+
+    const setOpen = open => {
+      panel.classList.toggle('open', open);
+      panel.setAttribute('aria-hidden', String(!open));
+      toggle.setAttribute('aria-expanded', String(open));
+      if (open) {
+        input.focus();
+      }
+    };
+
+    toggle.addEventListener('click', () => {
+      setOpen(!panel.classList.contains('open'));
+    });
+    close.addEventListener('click', () => setOpen(false));
+    reset.addEventListener('click', () => {
+      conversation = [];
+      saveConversation(storageKey, conversation);
+      messages.innerHTML = '';
+      appendChatMessage(messages, 'assistant', '会話履歴を削除しました。');
+      input.focus();
+    });
+
+    input.addEventListener('keydown', event => {
+      if (
+        event.key === 'Enter'
+        && !event.shiftKey
+        && !event.isComposing
+      ) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const question = input.value.trim();
+      if (!question) {
+        return;
+      }
+      if (!SELECTED_FILE) {
+        appendChatMessage(
+          messages,
+          'assistant',
+          '分析するCSVが選択されていません。',
+          true,
+        );
+        return;
+      }
+
+      const previousConversation = conversation.slice(-10);
+      appendChatMessage(messages, 'user', question);
+      conversation.push({ role: 'user', content: question });
+      conversation = conversation.slice(-20);
+      saveConversation(storageKey, conversation);
+      input.value = '';
+      input.disabled = true;
+      send.disabled = true;
+      status.textContent = '回答を生成しています…';
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: question,
+            file: SELECTED_FILE,
+            conversation: previousConversation,
+          }),
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          throw new Error(body.error || `HTTP ${response.status}`);
+        }
+
+        appendChatMessage(messages, 'assistant', body.response);
+        conversation.push({ role: 'assistant', content: body.response });
+        conversation = conversation.slice(-20);
+        saveConversation(storageKey, conversation);
+      } catch (error) {
+        appendChatMessage(
+          messages,
+          'assistant',
+          `通信エラー: ${error.message}`,
+          true,
+        );
+      } finally {
+        input.disabled = false;
+        send.disabled = false;
+        status.textContent = '';
+        input.focus();
+      }
+    });
+  }
 });
+
+function appendChatMessage(container, role, text, error = false) {
+  const wrapper = document.createElement('div');
+  const label = document.createElement('div');
+  const bubble = document.createElement('div');
+  wrapper.className = `chat-message ${role}${error ? ' error' : ''}`;
+  label.className = 'chat-message-label';
+  label.textContent = role === 'user' ? 'あなた' : 'AI';
+  bubble.className = 'chat-message-bubble';
+  bubble.textContent = text;
+  wrapper.append(label, bubble);
+  container.appendChild(wrapper);
+  container.scrollTop = container.scrollHeight;
+}
+
+function loadConversation(storageKey) {
+  try {
+    const value = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.filter(item => (
+      item
+      && ['user', 'assistant'].includes(item.role)
+      && typeof item.content === 'string'
+    )).slice(-20);
+  } catch {
+    return [];
+  }
+}
+
+function saveConversation(storageKey, conversation) {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(conversation));
+  } catch {
+    // ブラウザ設定でlocalStorageが無効でも、現在の画面内では会話を継続する。
+  }
+}
