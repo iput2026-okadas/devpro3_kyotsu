@@ -104,16 +104,6 @@ class TestClient(unittest.TestCase):
         self.assertEqual(result["temp"], 23.0)
         self.assertEqual(result["humid"], 58.0)
 
-    def test_read_sensors_reports_stale_dht22_value(self):
-        self.dht22.get_dht_data_with_status.return_value = (24.5, 60.0, "stale", "CRC")
-
-        with patch("sys.stdout") as stdout:
-            result = self.client.read_sensors()
-
-        self.assertEqual(result["temp"], 24.5)
-        self.assertEqual(result["humid"], 60.0)
-        stdout.write.assert_called()
-
     def test_client_test_sends_newline_delimited_json_six_times(self):
         socket_instance = MagicMock()
         socket_context = MagicMock()
@@ -148,6 +138,45 @@ class TestClient(unittest.TestCase):
             decoded = json.loads(payload.decode("utf-8"))
             self.assertEqual(decoded, sensor_data)
             self.assertEqual(set(decoded), {"temp", "humid", "co2", "light_percent"})
+
+    def test_client_test_waits_for_next_complete_measurement(self):
+        socket_instance = MagicMock()
+        socket_context = MagicMock()
+        socket_context.__enter__.return_value = socket_instance
+        socket_context.__exit__.return_value = None
+
+        incomplete_data = {
+            "temp": None,
+            "humid": None,
+            "co2": 900,
+            "light_percent": 55.5,
+        }
+        complete_data = {
+            "temp": 24.5,
+            "humid": 60.0,
+            "co2": 900,
+            "light_percent": 55.5,
+        }
+
+        with patch.object(self.client, "SEND_COUNT", 2):
+            with patch.object(
+                self.client.socket, "socket", return_value=socket_context
+            ):
+                with patch.object(
+                    self.client,
+                    "read_sensors",
+                    side_effect=[incomplete_data, complete_data, complete_data],
+                ) as read_sensors:
+                    with patch.object(self.client.time, "sleep") as sleep:
+                        with patch("sys.stdout"):
+                            self.client.client_test("127.0.0.1", 8765)
+
+        self.assertEqual(read_sensors.call_count, 3)
+        self.assertEqual(socket_instance.sendall.call_count, 2)
+        self.assertEqual(sleep.call_count, 3)
+        for call_args in socket_instance.sendall.call_args_list:
+            decoded = json.loads(call_args.args[0].decode("utf-8"))
+            self.assertNotIn(None, decoded.values())
 
 
 if __name__ == "__main__":

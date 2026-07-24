@@ -28,9 +28,11 @@ class TestServer(unittest.TestCase):
         mock_datetime.now.return_value = REAL_DATETIME(2026, 7, 3, 12, 34, 56)
 
         with patch("sys.stdout", new_callable=io.StringIO):
-            server.add_data({"temp": 25.5, "humid": 60})
-            server.add_data({"temp": 26.0, "humid": 61})
+            first_result = server.add_data({"temp": 25.5, "humid": 60})
+            second_result = server.add_data({"temp": 26.0, "humid": 61})
 
+        self.assertTrue(first_result)
+        self.assertTrue(second_result)
         self.assertEqual(
             server.data,
             [
@@ -39,14 +41,20 @@ class TestServer(unittest.TestCase):
             ],
         )
 
-    def test_add_data_rejects_missing_required_fields(self):
-        for incomplete_data in ({"humid": 60}, {"temp": 25.5}):
+    def test_add_data_skips_missing_or_none_required_fields(self):
+        for incomplete_data in (
+            {"humid": 60},
+            {"temp": 25.5},
+            {"temp": None, "humid": 60},
+            {"temp": 25.5, "humid": None},
+        ):
             with self.subTest(data=incomplete_data):
                 server.data = []
 
-                with self.assertRaises(KeyError):
-                    server.add_data(incomplete_data)
+                with patch("sys.stdout", new_callable=io.StringIO):
+                    result = server.add_data(incomplete_data)
 
+                self.assertFalse(result)
                 self.assertEqual(server.data, [])
 
     @patch("Server.server.dt.datetime")
@@ -98,7 +106,12 @@ class TestServer(unittest.TestCase):
         mock_add_data,
         mock_process_sensor_data,
     ):
-        sensor_data = {"temp": 25.5, "humid": 60, "co2": 1100}
+        sensor_data = {
+            "temp": 25.5,
+            "humid": 60,
+            "co2": 1100,
+            "light_percent": 55.5,
+        }
         client_socket = MagicMock()
         client_socket.recv.side_effect = [json.dumps(sensor_data).encode("utf-8"), b""]
 
@@ -108,6 +121,40 @@ class TestServer(unittest.TestCase):
         mock_add_data.assert_called_once_with(sensor_data)
         mock_process_sensor_data.assert_called_once_with(sensor_data)
         self.assertEqual(client_socket.recv.call_args_list, [call(1024), call(1024)])
+        client_socket.close.assert_called_once_with()
+
+    @patch("Server.server.alert.process_sensor_data")
+    @patch("Server.server.add_data")
+    def test_recv_data1024_skips_incomplete_data_and_accepts_next_measurement(
+        self,
+        mock_add_data,
+        mock_process_sensor_data,
+    ):
+        incomplete_data = {
+            "temp": None,
+            "humid": None,
+            "co2": 1100,
+            "light_percent": 55.5,
+        }
+        complete_data = {
+            "temp": 25.5,
+            "humid": 60,
+            "co2": 1100,
+            "light_percent": 55.5,
+        }
+        client_socket = MagicMock()
+        client_socket.recv.side_effect = [
+            json.dumps(incomplete_data).encode("utf-8"),
+            json.dumps(complete_data).encode("utf-8"),
+            b"",
+        ]
+
+        with patch("sys.stdout", new_callable=io.StringIO):
+            server.recv_data1024(client_socket, ("127.0.0.1", 50000))
+
+        mock_add_data.assert_called_once_with(complete_data)
+        mock_process_sensor_data.assert_called_once_with(complete_data)
+        self.assertEqual(client_socket.recv.call_count, 3)
         client_socket.close.assert_called_once_with()
 
     def test_recv_data1024_handles_invalid_json_and_closes_socket(self):

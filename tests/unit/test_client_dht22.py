@@ -55,40 +55,23 @@ class TestClientDHT22(unittest.TestCase):
 
         self.assertEqual(result, (24.5, 60.0, "ok", None))
 
-    def test_get_dht_data_with_status_uses_recent_value_after_retry_failure(self):
-        self.fake_sensor.read.return_value = (24.5, 60.0, None)
-        self.dht22.get_dht_data_with_status()
+    def test_get_dht_data_with_status_does_not_retry_after_crc_error(self):
         self.fake_sensor.read.side_effect = FakeCRCError("bad checksum")
 
-        with patch.object(self.dht22.time, "sleep") as mock_sleep:
-            result = self.dht22.get_dht_data_with_status()
+        with self.assertRaises(self.dht22.DHT22ReadError) as context:
+            self.dht22.get_dht_data_with_status()
 
-        self.assertEqual(result, (24.5, 60.0, "stale", "CRC"))
-        self.assertEqual(mock_sleep.call_count, self.dht22.READ_RETRY_COUNT - 1)
+        self.assertEqual(context.exception.error_code, "CRC")
+        self.fake_sensor.read.assert_called_once_with()
 
-    def test_get_dht_data_with_status_raises_when_no_recent_value_exists(self):
+    def test_get_dht_data_with_status_raises_after_missing_data(self):
         self.fake_sensor.read.side_effect = FakeMissingDataError("no pulse")
 
-        with patch.object(self.dht22.time, "sleep"), self.assertRaises(
-            self.dht22.DHT22ReadError
-        ) as context:
+        with self.assertRaises(self.dht22.DHT22ReadError) as context:
             self.dht22.get_dht_data_with_status()
 
         self.assertEqual(context.exception.error_code, "missing_data")
-
-    def test_get_dht_data_with_status_raises_when_recent_value_is_expired(self):
-        self.fake_sensor.read.return_value = (24.5, 60.0, None)
-        with patch.object(self.dht22.time, "time", return_value=100.0):
-            self.dht22.get_dht_data_with_status()
-
-        self.fake_sensor.read.side_effect = FakeCRCError("bad checksum")
-        with patch.object(self.dht22.time, "time", return_value=200.0):
-            with patch.object(self.dht22.time, "sleep"), self.assertRaises(
-                self.dht22.DHT22ReadError
-            ) as context:
-                self.dht22.get_dht_data_with_status()
-
-        self.assertEqual(context.exception.error_code, "CRC")
+        self.fake_sensor.read.assert_called_once_with()
 
     def test_get_dht_data_returns_temperature_and_humidity_only(self):
         self.fake_sensor.read.return_value = (24.5, 60.0, None)

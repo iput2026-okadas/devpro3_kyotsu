@@ -27,9 +27,7 @@ def read_sensors():
 
     try:
         if hasattr(dht22, "get_dht_data_with_status"):
-            temp, humid, status, error = dht22.get_dht_data_with_status()
-            if status == "stale":
-                print(f"DHT22 read failed; using recent value: {error}")
+            temp, humid, _, _ = dht22.get_dht_data_with_status()
         else:
             temp, humid = dht22.get_dht_data()
         data["temp"] = temp
@@ -55,15 +53,26 @@ def client_test(hostname_v1=SERVER, waiting_port_v1=WAITING_PORT):
         socket_r_s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         socket_r_s.connect((hostname_v1, waiting_port_v1))
 
-        for _ in range(SEND_COUNT):
+        sent_count = 0
+        while sent_count < SEND_COUNT:
             data = read_sensors()
             print(
                 "temp: {temp}, humid: {humid}, co2: {co2}, light: {light_percent} %".format(
                     **data
                 )
             )
-            data_s = (json.dumps(data) + "\n").encode("utf-8")
-            socket_r_s.sendall(data_s)
+
+            missing = [name for name, value in data.items() if value is None]
+            if missing:
+                print(
+                    "Sensor data incomplete; waiting for next measurement: "
+                    + ", ".join(missing)
+                )
+            else:
+                data_s = (json.dumps(data) + "\n").encode("utf-8")
+                socket_r_s.sendall(data_s)
+                sent_count += 1
+
             time.sleep(WAIT_INTERVAL)
 
 
