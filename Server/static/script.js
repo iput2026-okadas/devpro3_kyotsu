@@ -1,53 +1,59 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // HTML側から引き渡されたグローバル変数を参照
   const COLUMNS = window.CSV_COLUMNS || [];
   const ROWS = window.CSV_ROWS || [];
   const SELECTED_FILE = window.SELECTED_FILE;
 
   let sortedRows = [...ROWS];
   let sortCol = null;
-  let sortDir = 1; // 1 = 昇順, -1 = 降順
+  let sortDir = 1;
 
-  // テーブルのデータをレンダリングする関数
   function renderTable(rowsList) {
     const tbody = document.getElementById('table-body');
     tbody.innerHTML = '';
-    
-    rowsList.forEach(r => {
-      const tr = document.createElement('tr');
-      COLUMNS.forEach(col => {
-        const td = document.createElement('td');
-        td.textContent = r[col] !== undefined ? r[col] : '';
-        tr.appendChild(td);
+
+    rowsList.forEach(row => {
+      const tableRow = document.createElement('tr');
+      COLUMNS.forEach(column => {
+        const cell = document.createElement('td');
+        cell.textContent = row[column] !== undefined ? row[column] : '';
+        tableRow.appendChild(cell);
       });
-      tbody.appendChild(tr);
+      tbody.appendChild(tableRow);
     });
 
-    document.getElementById('stats').textContent = `表示中: ${rowsList.length} / 全 ${ROWS.length} 件`;
+    document.getElementById('stats').textContent =
+      `表示中: ${rowsList.length} / 全 ${ROWS.length} 件`;
   }
 
-  // ソート処理を行う関数
   function sortRowsData() {
-    if (!sortCol) return;
-    sortedRows.sort((a, b) => {
-      const va = a[sortCol];
-      const vb = b[sortCol];
-      const na = Number(String(va).replace(/,/g, ''));
-      const nb = Number(String(vb).replace(/,/g, ''));
-      
-      if (Number.isFinite(na) && Number.isFinite(nb)) {
-        return (na - nb) * sortDir;
+    if (!sortCol) {
+      return;
+    }
+    sortedRows.sort((firstRow, secondRow) => {
+      const firstValue = firstRow[sortCol];
+      const secondValue = secondRow[sortCol];
+      const firstNumber = Number(String(firstValue).replace(/,/g, ''));
+      const secondNumber = Number(String(secondValue).replace(/,/g, ''));
+
+      if (
+        Number.isFinite(firstNumber)
+        && Number.isFinite(secondNumber)
+      ) {
+        return (firstNumber - secondNumber) * sortDir;
       }
-      return String(va).localeCompare(String(vb), undefined, { numeric: true }) * sortDir;
+      return String(firstValue).localeCompare(
+        String(secondValue),
+        undefined,
+        { numeric: true },
+      ) * sortDir;
     });
   }
 
-  // ソートインジケーター（▲▼記号）の表示を更新する関数
   function updateSortIndicators() {
-    document.querySelectorAll('#table-header th').forEach(th => {
-      const col = th.getAttribute('data-col');
-      const icon = th.querySelector('.sort-icon');
-      if (col === sortCol) {
+    document.querySelectorAll('#table-header th').forEach(header => {
+      const column = header.getAttribute('data-col');
+      const icon = header.querySelector('.sort-icon');
+      if (column === sortCol) {
         icon.textContent = sortDir === 1 ? ' ▲' : ' ▼';
         icon.style.color = 'var(--accent)';
       } else {
@@ -57,69 +63,145 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ヘッダー要素の初期化とイベント設定
   function initHeader() {
-    const thr = document.getElementById('table-header');
-    thr.innerHTML = '';
-    COLUMNS.forEach(col => {
-      const th = document.createElement('th');
-      th.setAttribute('data-col', col);
-      th.innerHTML = `${col}<span class="sort-icon"> ↕</span>`;
-      th.addEventListener('click', () => {
-        if (sortCol === col) {
+    const headerRow = document.getElementById('table-header');
+    headerRow.innerHTML = '';
+    COLUMNS.forEach(column => {
+      const header = document.createElement('th');
+      header.setAttribute('data-col', column);
+      header.innerHTML = `${column}<span class="sort-icon"> ↕</span>`;
+      header.addEventListener('click', () => {
+        if (sortCol === column) {
           sortDir = -sortDir;
         } else {
-          sortCol = col;
+          sortCol = column;
           sortDir = 1;
         }
         sortRowsData();
         updateSortIndicators();
         renderTable(sortedRows);
       });
-      thr.appendChild(th);
+      headerRow.appendChild(header);
     });
   }
 
-  // エクスポート用のCSV文字列生成
   function toCSV(rows) {
-    const esc = v => `"${String(v || '').replace(/"/g, '""')}"`;
-    const header = COLUMNS.map(esc).join(',');
-    const body = rows.map(r => COLUMNS.map(c => esc(r[c])).join(',')).join('\n');
-    return header + '\n' + body;
+    const escapeValue = value =>
+      `"${String(value || '').replace(/"/g, '""')}"`;
+    const header = COLUMNS.map(escapeValue).join(',');
+    const body = rows
+      .map(row => COLUMNS.map(column => escapeValue(row[column])).join(','))
+      .join('\n');
+    return `${header}\n${body}`;
   }
 
-  // CSVダウンロードボタンイベント
   document.getElementById('download').addEventListener('click', () => {
-    const csv = toCSV(sortedRows);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = SELECTED_FILE || 'export.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const blob = new Blob(
+      [toCSV(sortedRows)],
+      { type: 'text/csv;charset=utf-8;' },
+    );
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = SELECTED_FILE || 'export.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   });
 
-  // JSONエクスポートボタンイベント
   document.getElementById('export-json').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(sortedRows, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    const blob = new Blob(
+      [JSON.stringify(sortedRows, null, 2)],
+      { type: 'application/json' },
+    );
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
     const filename = SELECTED_FILE || 'export.json';
-    a.download = filename.replace('.csv', '.json');
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    link.download = filename.replace('.csv', '.json');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   });
 
-  // 初期実行
   if (COLUMNS.length > 0) {
     initHeader();
     updateSortIndicators();
     renderTable(sortedRows);
   }
 
+  initAddData();
   initChatbot();
+
+  function initAddData() {
+    const dialog = document.getElementById('add-data-dialog');
+    const form = document.getElementById('add-data-form');
+    const openButton = document.getElementById('open-add-dialog');
+    const cancelButton = document.getElementById('cancel-add-data');
+    const submitButton = document.getElementById('submit-add-data');
+    const errorMessage = document.getElementById('add-data-error');
+    const timestampInput = document.getElementById('timestamp');
+
+    const currentLocalTimestamp = () => {
+      const now = new Date();
+      const pad = value => String(value).padStart(2, '0');
+      return [
+        now.getFullYear(),
+        pad(now.getMonth() + 1),
+        pad(now.getDate()),
+      ].join('-') + 'T' + [
+        pad(now.getHours()),
+        pad(now.getMinutes()),
+        pad(now.getSeconds()),
+      ].join(':');
+    };
+
+    openButton.addEventListener('click', () => {
+      form.reset();
+      errorMessage.textContent = '';
+      timestampInput.value = currentLocalTimestamp();
+      dialog.showModal();
+    });
+
+    cancelButton.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', event => {
+      if (event.target === dialog) {
+        dialog.close();
+      }
+    });
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      errorMessage.textContent = '';
+      const formValues = Object.fromEntries(new FormData(form).entries());
+      submitButton.disabled = true;
+      submitButton.textContent = '追加中…';
+
+      try {
+        const response = await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file: SELECTED_FILE,
+            ...formValues,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(
+            result.error || 'データを追加できませんでした',
+          );
+        }
+
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set('file', SELECTED_FILE);
+        window.location.assign(nextUrl);
+      } catch (error) {
+        errorMessage.textContent =
+          error.message || 'データを追加できませんでした';
+        submitButton.disabled = false;
+        submitButton.textContent = 'データを追加';
+      }
+    });
+  }
 
   function initChatbot() {
     const panel = document.getElementById('chatbot-panel');
@@ -212,7 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         appendChatMessage(messages, 'assistant', body.response);
-        conversation.push({ role: 'assistant', content: body.response });
+        conversation.push({
+          role: 'assistant',
+          content: body.response,
+        });
         conversation = conversation.slice(-20);
         saveConversation(storageKey, conversation);
       } catch (error) {
@@ -266,6 +351,6 @@ function saveConversation(storageKey, conversation) {
   try {
     localStorage.setItem(storageKey, JSON.stringify(conversation));
   } catch {
-    // ブラウザ設定でlocalStorageが無効でも、現在の画面内では会話を継続する。
+    // localStorageが無効でも、現在の画面内では会話を継続する。
   }
 }

@@ -34,6 +34,17 @@
   {% endif %}
 
   <div class="actions">
+    <button
+      id="open-add-dialog"
+      class="button-primary"
+      type="button"
+      aria-haspopup="dialog"
+      aria-controls="add-data-dialog"
+      {% if not client_ids %}disabled title="追加先のclient-idがCSVにありません"{% endif %}
+    >
+      <span aria-hidden="true">＋</span>
+      データ追加
+    </button>
     <button id="download">CSVをエクスポート</button>
     <button id="export-json">JSONをエクスポート</button>
   </div>
@@ -52,13 +63,13 @@
         </div>
 
         <div style="flex: 1; min-width: 150px; background-color: #fef3c7; border-left: 4px solid #d97706; padding: 12px 15px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-          <div style="font-size: 0.85em; color: #92400e; margin-bottom: 4px; font-weight: 600;">平均降水量</div>
-          <div style="font-size: 1.4em; font-weight: bold; color: #b45309;">未取得</div>
+          <div style="font-size: 0.85em; color: #92400e; margin-bottom: 4px; font-weight: 600;">平均CO2</div>
+          <div style="font-size: 1.4em; font-weight: bold; color: #b45309;">{{ avg_co2 }} <span style="font-size: 0.7em;">ppm</span></div>
         </div>
 
         <div style="flex: 1; min-width: 150px; background-color: #faf5ff; border-left: 4px solid #8b5cf6; padding: 12px 15px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
           <div style="font-size: 0.85em; color: #5b21b6; margin-bottom: 4px; font-weight: 600;">平均光量</div>
-          <div style="font-size: 1.4em; font-weight: bold; color: #6d28d9;">未取得</div>
+          <div style="font-size: 1.4em; font-weight: bold; color: #6d28d9;">{{ avg_light }} <span style="font-size: 0.7em;">%</span></div>
         </div>
 
       </div>
@@ -127,6 +138,73 @@
     <button id="chatbot-send" type="submit">送信</button>
   </form>
 </section>
+
+  <dialog id="add-data-dialog" class="data-dialog" aria-labelledby="add-data-title">
+    <form id="add-data-form">
+      <div class="dialog-heading">
+        <div class="dialog-heading-copy">
+          <span class="dialog-kicker">CSV RECORD</span>
+          <h2 id="add-data-title">センサーデータを追加</h2>
+          <p>選択中のCSVへ、計測時刻に沿って1件追加します。</p>
+        </div>
+        <div class="time-mark" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <label class="field field-wide">
+          <span>client-id</span>
+          <select id="client-id" name="client_id" required>
+            <option value="">client-idを選択</option>
+            {% for client_id in client_ids %}
+              <option value="{{ client_id }}">{{ client_id }}</option>
+            {% endfor %}
+          </select>
+          {% if client_id_column == "id" %}
+            <small>このCSVでは「id」列をclient-idとして使用します。</small>
+          {% endif %}
+        </label>
+
+        <label class="field field-wide">
+          <span>timestamp</span>
+          <input id="timestamp" name="timestamp" type="datetime-local" step="1" required>
+          <small>日付と時刻を秒単位で指定してください。</small>
+        </label>
+
+        <label class="field">
+          <span>temp <small>℃</small></span>
+          <input name="temp" type="number" step="0.1" inputmode="decimal" placeholder="例: 24.8" required>
+        </label>
+
+        <label class="field">
+          <span>humid <small>%</small></span>
+          <input name="humid" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="例: 60.2" required>
+        </label>
+
+        <label class="field">
+          <span>co2 <small>ppm</small></span>
+          <input name="co2" type="number" min="0" step="1" inputmode="numeric" placeholder="例: 800" required>
+        </label>
+
+        <label class="field">
+          <span>light_percent <small>%</small></span>
+          <input name="light_percent" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="例: 48.5" required>
+        </label>
+      </div>
+
+      <p id="add-data-error" class="form-error" role="alert" aria-live="polite"></p>
+
+      <div class="dialog-actions">
+        <button id="cancel-add-data" type="button">キャンセル</button>
+        <button id="submit-add-data" class="button-primary" type="submit">
+          データを追加
+        </button>
+      </div>
+    </form>
+  </dialog>
 
 <script>
   window.CSV_COLUMNS = {{ columns|tojson }};

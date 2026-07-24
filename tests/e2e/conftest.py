@@ -44,7 +44,7 @@ def _wait_for_server(
     pytest.fail(f"Flask server did not start within {timeout} seconds")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def base_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
     data_dir = tmp_path_factory.mktemp("csv-viewer-data")
     for csv_file in FIXTURE_DIR.glob("data-*.csv"):

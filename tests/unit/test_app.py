@@ -44,6 +44,11 @@ class TestApp(unittest.TestCase):
         mock_render.assert_called_once()
         return mock_render.call_args.kwargs
 
+    def _read_csv(self, path):
+        with path.open(newline="", encoding="utf-8") as csv_file:
+            reader = csv.DictReader(csv_file)
+            return list(reader.fieldnames or []), list(reader)
+
     def test_index_selects_latest_csv_by_default(self):
         self._write_csv(
             "data-20260702120000.csv",
@@ -74,6 +79,8 @@ class TestApp(unittest.TestCase):
             [row["client_id"] for row in context["rows"]],
             ["raspi-lab", "raspi-office"],
         )
+        self.assertEqual(context["client_id_column"], "client_id")
+        self.assertEqual(context["client_ids"], ["raspi-lab", "raspi-office"])
 
     def test_index_loads_selected_csv(self):
         self._write_csv(
@@ -98,16 +105,35 @@ class TestApp(unittest.TestCase):
         self._write_csv(
             "data-20260703120000.csv",
             [
-                [1, "raspi-lab", "2026-07-03 12:00:00", 10, 40],
-                [2, "raspi-office", "2026-07-03 12:05:00", 21, 51],
-                [3, "raspi-lab", "2026-07-03 12:10:00", "invalid", "invalid"],
+                [1, "raspi-lab", "2026-07-03 12:00:00", 10, 40, 700, 20],
+                [2, "raspi-office", "2026-07-03 12:05:00", 21, 51, 900, 50],
+                [
+                    3,
+                    "raspi-lab",
+                    "2026-07-03 12:10:00",
+                    "invalid",
+                    "invalid",
+                    "invalid",
+                    "invalid",
+                ],
             ],
+            columns=(
+                "id",
+                "client_id",
+                "timestamp",
+                "temp",
+                "humid",
+                "co2",
+                "light_percent",
+            ),
         )
 
         context = self._get_template_context()
 
         self.assertEqual(context["avg_temperature"], 15.5)
         self.assertEqual(context["avg_humidity"], 45.5)
+        self.assertEqual(context["avg_co2"], 800.0)
+        self.assertEqual(context["avg_light"], 35.0)
 
     def test_index_handles_header_only_csv(self):
         self._write_csv("data-20260703120000.csv", [])
@@ -183,6 +209,205 @@ class TestApp(unittest.TestCase):
         self.assertIsNone(context["error"])
         self.assertEqual(context["avg_temperature"], 0)
         self.assertEqual(context["avg_humidity"], 0)
+        self.assertIsNone(context["client_id_column"])
+        self.assertEqual(context["client_ids"], [])
+
+    def test_add_csv_data_inserts_by_timestamp_and_extends_legacy_columns(self):
+        csv_path = self._write_csv(
+            "data-20260703120000.csv",
+            [
+                [101, "2026-07-03 12:00:00", 22.0, 45.0],
+                [102, "2026-07-03 12:10:00", 24.0, 47.0],
+            ],
+            columns=("id", "timestamp", "temp", "humid"),
+        )
+
+        response = self.client.post(
+            "/api/data",
+            json={
+                "file": csv_path.name,
+                "client_id": "101",
+                "timestamp": "2026-07-03T12:05:30",
+                "temp": "23.1",
+                "humid": "46.2",
+                "co2": "850",
+                "light_percent": "48.5",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["inserted_index"], 1)
+
+        columns, rows = self._read_csv(csv_path)
+        self.assertEqual(
+            columns,
+            ["id", "timestamp", "temp", "humid", "co2", "light_percent"],
+        )
+        self.assertEqual(
+            [row["timestamp"] for row in rows],
+            [
+                "2026-07-03 12:00:00",
+                "2026-07-03 12:05:30",
+                "2026-07-03 12:10:00",
+            ],
+        )
+        self.assertEqual(rows[1]["id"], "101")
+        self.assertEqual(rows[1]["temp"], "23.1")
+        self.assertEqual(rows[1]["humid"], "46.2")
+        self.assertEqual(rows[1]["co2"], "850")
+        self.assertEqual(rows[1]["light_percent"], "48.5")
+        self.assertEqual(rows[0]["co2"], "")
+        self.assertEqual(rows[2]["light_percent"], "")
+
+    def test_add_csv_data_uses_client_id_column_and_sorts_existing_rows(self):
+        columns = (
+            "client-id",
+            "timestamp",
+            "temp",
+            "humid",
+            "co2",
+            "light_percent",
+        )
+        csv_path = self._write_csv(
+            "data-20260703120000.csv",
+            [
+                ["room-a", "2026-07-03 12:10:00", 24, 47, 900, 50],
+                ["room-b", "2026-07-03 12:00:00", 22, 45, 800, 40],
+            ],
+            columns=columns,
+        )
+
+        response = self.client.post(
+            "/api/data",
+            json={
+                "file": csv_path.name,
+                "client_id": "room-a",
+                "timestamp": "2026-07-03T12:05:00",
+                "temp": 23,
+                "humid": 46,
+                "co2": 850,
+                "light_percent": 45,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        _, rows = self._read_csv(csv_path)
+        self.assertEqual(
+            [row["client-id"] for row in rows],
+            ["room-b", "room-a", "room-a"],
+        )
+
+    def test_add_csv_data_preserves_client_id_and_assigns_record_id(self):
+        columns = (
+            "id",
+            "client_id",
+            "timestamp",
+            "temp",
+            "humid",
+            "co2",
+            "light_percent",
+        )
+        csv_path = self._write_csv(
+            "data-20260703120000.csv",
+            [
+                [10, "room-a", "2026-07-03 12:00:00", 22, 45, 800, 40],
+                [12, "room-b", "2026-07-03 12:10:00", 24, 47, 900, 50],
+            ],
+            columns=columns,
+        )
+
+        response = self.client.post(
+            "/api/data",
+            json={
+                "file": csv_path.name,
+                "client_id": "room-a",
+                "timestamp": "2026-07-03T12:05:00",
+                "temp": 23,
+                "humid": 46,
+                "co2": 850,
+                "light_percent": 45,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        _, rows = self._read_csv(csv_path)
+        self.assertEqual(rows[1]["id"], "13")
+        self.assertEqual(rows[1]["client_id"], "room-a")
+        self.assertEqual(rows[1]["co2"], "850")
+        self.assertEqual(rows[1]["light_percent"], "45")
+
+    def test_add_csv_data_rejects_unknown_client_id_without_changing_file(self):
+        csv_path = self._write_csv(
+            "data-20260703120000.csv",
+            [[101, "2026-07-03 12:00:00", 22, 45]],
+            columns=("id", "timestamp", "temp", "humid"),
+        )
+        original_text = csv_path.read_text(encoding="utf-8")
+
+        response = self.client.post(
+            "/api/data",
+            json={
+                "file": csv_path.name,
+                "client_id": "999",
+                "timestamp": "2026-07-03T12:05:00",
+                "temp": 23,
+                "humid": 46,
+                "co2": 850,
+                "light_percent": 45,
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("client-id", response.get_json()["error"])
+        self.assertEqual(csv_path.read_text(encoding="utf-8"), original_text)
+
+    def test_add_csv_data_validates_timestamp_and_sensor_ranges(self):
+        csv_path = self._write_csv(
+            "data-20260703120000.csv",
+            [[101, "2026-07-03 12:00:00", 22, 45]],
+            columns=("id", "timestamp", "temp", "humid"),
+        )
+        valid_payload = {
+            "file": csv_path.name,
+            "client_id": "101",
+            "timestamp": "2026-07-03T12:05:00",
+            "temp": 23,
+            "humid": 46,
+            "co2": 850,
+            "light_percent": 45,
+        }
+
+        invalid_values = (
+            ("timestamp", "2026-07-03T12:05"),
+            ("temp", "not-a-number"),
+            ("humid", 101),
+            ("co2", -1),
+            ("light_percent", -0.1),
+        )
+        for field, value in invalid_values:
+            with self.subTest(field=field):
+                payload = {**valid_payload, field: value}
+                response = self.client.post("/api/data", json=payload)
+                self.assertEqual(response.status_code, 400)
+
+        _, rows = self._read_csv(csv_path)
+        self.assertEqual(len(rows), 1)
+
+    def test_add_csv_data_rejects_file_outside_data_directory(self):
+        response = self.client.post(
+            "/api/data",
+            json={
+                "file": "../data-outside.csv",
+                "client_id": "101",
+                "timestamp": "2026-07-03T12:05:00",
+                "temp": 23,
+                "humid": 46,
+                "co2": 850,
+                "light_percent": 45,
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_chat_returns_ai_response_for_selected_csv(self):
         self._write_csv(
