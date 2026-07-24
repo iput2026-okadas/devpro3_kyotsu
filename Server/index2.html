@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>CSV Viewer{% if selected_file %} — {{ selected_file }}{% endif %}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="wrap">
+  <h1>CSV データビューア</h1>
+  {% if csv_files %}<nav><ul class="file-list">{% for file in csv_files %}<li><a href="/?file={{ file }}" class="{% if file == selected_file %}active{% endif %}">{{ file }}</a></li>{% endfor %}</ul></nav>{% endif %}
+  {% if error %}<div class="error-msg"><strong>エラー:</strong> {{ error }}</div>{% endif %}
+  <div class="actions"><button id="download">CSVをエクスポート</button><button id="export-json">JSONをエクスポート</button></div>
+  <div class="panel"><div class="toolbar"><div id="stats"></div></div><div class="table-wrap"><table><thead><tr id="table-header"></tr></thead><tbody id="table-body"></tbody></table></div></div>
+</div>
+<button id="chatbot-toggle" class="chatbot-toggle">💬 <span>AI分析</span></button>
+<section id="chatbot-panel" class="chatbot-panel" aria-hidden="true">
+  <div class="chatbot-header"><div><h2>CSV分析チャット</h2><p>{{ selected_file or 'CSV未選択' }}</p></div><div><button id="chatbot-reset">履歴削除</button><button id="chatbot-close">×</button></div></div>
+  <div id="chatbot-messages" class="chatbot-messages"><div class="chat-message assistant"><div class="chat-message-label">AI</div><div class="chat-message-bubble">選択中のCSVについて質問してください。</div></div></div>
+  <div id="chatbot-status" class="chatbot-status"></div>
+  <form id="chatbot-form" class="chatbot-form"><textarea id="chatbot-input" maxlength="1000" placeholder="CSVデータについて質問..."></textarea><button id="chatbot-send" type="submit">送信</button></form>
+</section>
+<script>window.CSV_COLUMNS={{ columns|tojson }};window.CSV_ROWS={{ rows|tojson }};window.SELECTED_FILE={{ selected_file|tojson }};window.CHATBOT_API_BASE='http://127.0.0.1:5002';</script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body></html>
